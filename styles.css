@@ -226,6 +226,12 @@ body {
 }
 .btn-save:hover { opacity: 0.88; background: var(--accent-grad); }
 
+.btn-currency-active {
+  background: rgba(74,222,128,0.15);
+  border-color: rgba(74,222,128,0.5);
+  color: var(--green);
+}
+
 /* ---- Tab Navigation ---- */
 .tab-nav {
   display: flex;

@@ -11,6 +11,7 @@
 const VAULT_KEY    = 'orionlux_vault';
 const REPO_CFG_KEY = 'orionlux_repo';
 const PBKDF2_ITER  = 150000;
+const ARS_RATE     = 1450;
 
 // ─────────────────────────────────────────────────────────────
 // APP STATE
@@ -22,12 +23,15 @@ let state     = null;   // live app state (deep copy of data.json)
 let activeTab = 'costos';
 let ventasFilter = 'all';
 let ventasSearch = '';
+let showARS   = false;
 
 // ─────────────────────────────────────────────────────────────
 // UTILITY
 // ─────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const fmt = n => '$' + Number(n).toFixed(2);
+const fmt = n => showARS
+  ? '$' + Math.round(Number(n) * ARS_RATE).toLocaleString('es-AR') + ' ARS'
+  : '$' + Number(n).toFixed(2);
 
 function toast(msg, type = 'info', duration = 4000) {
   const el = document.createElement('div');
@@ -331,7 +335,7 @@ async function attemptLogin() {
         $('btn-login').disabled = false;
         return;
       }
-      if (!token || (!token.startsWith('ghp_') && !token.startsWith('github_pat_'))) {
+      if (!token || token.length < 10) {
         errorEl.textContent = 'Contraseña incorrecta.';
         $('btn-login').textContent = 'Entrar';
         $('btn-login').disabled = false;
@@ -416,6 +420,12 @@ function showNoBanner() {
 function setupTopBar() {
   $('btn-save').addEventListener('click', pushData);
   $('btn-logout').addEventListener('click', logout);
+  $('btn-currency').addEventListener('click', () => {
+    showARS = !showARS;
+    $('btn-currency').textContent = showARS ? 'USD' : 'ARS';
+    $('btn-currency').classList.toggle('btn-currency-active', showARS);
+    renderAll();
+  });
 }
 
 function logout() {
