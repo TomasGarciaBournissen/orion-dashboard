@@ -29,9 +29,17 @@ let showARS   = false;
 // UTILITY
 // ─────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
+
+// Display a stored USD value according to current currency mode
 const fmt = n => showARS
   ? '$' + Math.round(Number(n) * ARS_RATE).toLocaleString('es-AR') + ' ARS'
   : '$' + Number(n).toFixed(2);
+
+// Convert a raw input value to stored USD
+const toUSD = v => showARS ? (parseFloat(v) || 0) / ARS_RATE : (parseFloat(v) || 0);
+
+// Convert a stored USD value to the display input value
+const toDisplay = n => showARS ? Math.round(Number(n) * ARS_RATE) : Number(n);
 
 function toast(msg, type = 'info', duration = 4000) {
   const el = document.createElement('div');
@@ -532,12 +540,12 @@ function renderCostos() {
 
     const montoInput = document.createElement('input');
     montoInput.type        = 'number';
-    montoInput.value       = costo.monto;
-    montoInput.placeholder = '0.00';
+    montoInput.value       = toDisplay(costo.monto);
+    montoInput.placeholder = '0';
     montoInput.min         = '0';
-    montoInput.step        = '0.01';
+    montoInput.step        = showARS ? '1' : '0.01';
     montoInput.addEventListener('input', e => {
-      costo.monto = parseFloat(e.target.value) || 0;
+      costo.monto = toUSD(e.target.value);
       updateCostosTotal();
       markDirty();
       if (activeTab === 'resumen') renderResumen();
@@ -640,15 +648,15 @@ function buildProductRow(p) {
   const gu = gananciaUnidad(p);
   const gt = gananciaPorProducto(p);
 
-  const numInput = (val, field, step = '0.01', width = '70px') => {
+  const numInput = (val, field, step = '0.01', width = '70px', isMoney = false) => {
     const inp = document.createElement('input');
     inp.type  = 'number';
-    inp.value = val;
-    inp.step  = step;
+    inp.value = isMoney ? toDisplay(val) : val;
+    inp.step  = isMoney ? (showARS ? '1' : step) : step;
     inp.min   = '0';
     inp.style.width = width;
     inp.addEventListener('change', e => {
-      p[field] = parseFloat(e.target.value) || 0;
+      p[field] = isMoney ? toUSD(e.target.value) : (parseFloat(e.target.value) || 0);
       refreshProductRow(tr, p);
       markDirty();
       if (activeTab === 'resumen') renderResumen();
@@ -666,9 +674,9 @@ function buildProductRow(p) {
   tdId.innerHTML = `<span class="inv-id-badge">${escHtml(p.id)}</span>`;
 
   // Editable cols
-  const tdCosto  = document.createElement('td'); tdCosto.appendChild(numInput(p.costo, 'costo'));
-  const tdEnvio  = document.createElement('td'); tdEnvio.appendChild(numInput(p.envio, 'envio'));
-  const tdMarkup = document.createElement('td'); tdMarkup.appendChild(numInput(p.markupPct, 'markupPct', '1', '65px'));
+  const tdCosto  = document.createElement('td'); tdCosto.appendChild(numInput(p.costo, 'costo', '0.01', '70px', true));
+  const tdEnvio  = document.createElement('td'); tdEnvio.appendChild(numInput(p.envio, 'envio', '0.01', '70px', true));
+  const tdMarkup = document.createElement('td'); tdMarkup.appendChild(numInput(p.markupPct, 'markupPct', '1', '65px', false));
 
   // Derived cols
   const tdPV = document.createElement('td');
@@ -1087,10 +1095,10 @@ function buildVentaFinancials(venta, container) {
   pagLabel.textContent = 'Monto pagado';
   const pagInp = document.createElement('input');
   pagInp.type  = 'number';
-  pagInp.value = venta.montoPagado || 0;
-  pagInp.min   = '0'; pagInp.step = '0.01';
+  pagInp.value = toDisplay(venta.montoPagado || 0);
+  pagInp.min   = '0'; pagInp.step = showARS ? '1' : '0.01';
   pagInp.addEventListener('change', e => {
-    venta.montoPagado = parseFloat(e.target.value) || 0;
+    venta.montoPagado = toUSD(e.target.value);
     updateVentaFinancials(venta, container);
     markDirty();
     if (activeTab === 'resumen') renderResumen();
