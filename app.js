@@ -676,12 +676,35 @@ function buildProductRow(p) {
   // Editable cols
   const tdCosto  = document.createElement('td'); tdCosto.appendChild(numInput(p.costo, 'costo', '0.01', '70px', true));
   const tdEnvio  = document.createElement('td'); tdEnvio.appendChild(numInput(p.envio, 'envio', '0.01', '70px', true));
-  const tdMarkup = document.createElement('td'); tdMarkup.appendChild(numInput(p.markupPct, 'markupPct', '1', '65px', false));
 
-  // Derived cols
-  const tdPV = document.createElement('td');
-  tdPV.textContent = fmt(pv);
-  tdPV.classList.add('fw-600');
+  // Markup % — editing this updates precio venta input
+  const markupInp = document.createElement('input');
+  markupInp.type = 'number'; markupInp.value = p.markupPct;
+  markupInp.step = '1'; markupInp.min = '0'; markupInp.style.width = '65px';
+  markupInp.addEventListener('change', e => {
+    p.markupPct = parseFloat(e.target.value) || 0;
+    pvInp.value = toDisplay(precioVenta(p));
+    refreshProductRow(tr, p);
+    markDirty();
+    if (activeTab === 'resumen') renderResumen();
+  });
+  const tdMarkup = document.createElement('td'); tdMarkup.appendChild(markupInp);
+
+  // Precio venta — editing this back-calculates markup
+  const pvInp = document.createElement('input');
+  pvInp.type = 'number'; pvInp.value = toDisplay(pv);
+  pvInp.step = showARS ? '1' : '0.01'; pvInp.min = '0'; pvInp.style.width = '80px';
+  pvInp.classList.add('fw-600');
+  pvInp.addEventListener('change', e => {
+    const newPV = toUSD(e.target.value);
+    // markup = (pv / costo - 1) * 100, only if costo > 0
+    p.markupPct = p.costo > 0 ? Math.round(((newPV / p.costo) - 1) * 10000) / 100 : 0;
+    markupInp.value = p.markupPct;
+    refreshProductRow(tr, p);
+    markDirty();
+    if (activeTab === 'resumen') renderResumen();
+  });
+  const tdPV = document.createElement('td'); tdPV.appendChild(pvInp);
 
   const tdGU = document.createElement('td');
   tdGU.textContent = fmt(gu);
@@ -766,8 +789,9 @@ function refreshProductRow(tr, p) {
   const gt = gananciaPorProducto(p);
 
   const tds = tr.querySelectorAll('td');
-  // td[5]=PV, td[6]=GU, td[7]=Stock, td[8]=Vendidos, td[9]=Comprados, td[10]=GT
-  tds[5].textContent = fmt(pv);
+  // td[5]=PV (input), td[6]=GU, td[7]=Stock, td[8]=Vendidos, td[9]=Comprados, td[10]=GT
+  const pvInput = tds[5].querySelector('input');
+  if (pvInput) pvInput.value = toDisplay(pv);
   tds[6].textContent = fmt(gu);
   tds[6].className = gu >= 0 ? 'text-green fw-600' : 'text-red fw-600';
   tds[7].textContent = p.stock;
