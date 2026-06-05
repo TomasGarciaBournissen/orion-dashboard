@@ -668,10 +668,40 @@ function buildProductRow(p) {
     return inp;
   };
 
-  // Col: nombre+variante
+  // Col: nombre+variante+categoria — all inline editable
   const tdNombre = document.createElement('td');
-  const isNew = !!tr.closest; // always true, used to detect edit mode
-  tdNombre.innerHTML = `<span class="inv-nombre">${escHtml(p.nombre)}</span><span class="inv-variante">${escHtml(p.variante)}</span>`;
+  tdNombre.style.minWidth = '180px';
+
+  const nombreInp = document.createElement('input');
+  nombreInp.type = 'text'; nombreInp.value = p.nombre;
+  nombreInp.className = 'inv-nombre-inp';
+  nombreInp.placeholder = 'Nombre';
+  nombreInp.style.cssText = 'width:100%;background:transparent;border:1px solid transparent;border-radius:6px;padding:.25rem .4rem;font-size:.84rem;font-weight:500;color:var(--silver-hi);font-family:var(--font)';
+  nombreInp.addEventListener('focus', e => e.target.style.borderColor = 'var(--silver-lo)');
+  nombreInp.addEventListener('blur',  e => { e.target.style.borderColor = 'transparent'; });
+  nombreInp.addEventListener('change', e => { p.nombre = e.target.value; markDirty(); });
+
+  const varianteInp = document.createElement('input');
+  varianteInp.type = 'text'; varianteInp.value = p.variante;
+  varianteInp.placeholder = 'Variante';
+  varianteInp.style.cssText = 'width:100%;background:transparent;border:1px solid transparent;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;color:var(--silver-lo);font-family:var(--font);margin-top:.15rem';
+  varianteInp.addEventListener('focus', e => e.target.style.borderColor = 'var(--silver-lo)');
+  varianteInp.addEventListener('blur',  e => { e.target.style.borderColor = 'transparent'; });
+  varianteInp.addEventListener('change', e => { p.variante = e.target.value; markDirty(); });
+
+  const catSel = document.createElement('select');
+  catSel.style.cssText = 'width:100%;background:var(--bg2);border:1px solid transparent;border-radius:6px;padding:.2rem .4rem;font-size:.7rem;color:var(--silver-lo);font-family:var(--font);margin-top:.15rem;cursor:pointer';
+  [...CATEGORIES, 'Other'].forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    if (c === p.categoria) o.selected = true;
+    catSel.appendChild(o);
+  });
+  catSel.addEventListener('change', e => { p.categoria = e.target.value; markDirty(); renderInventario(); });
+
+  tdNombre.appendChild(nombreInp);
+  tdNombre.appendChild(varianteInp);
+  tdNombre.appendChild(catSel);
 
   // Col: id
   const tdId = document.createElement('td');
@@ -767,8 +797,35 @@ function buildProductRow(p) {
   const venderGroup = document.createElement('div'); venderGroup.className = 'stock-action';
   venderGroup.appendChild(venderInp); venderGroup.appendChild(venderBtn);
 
+  // ↑ ↓ reorder within full productos array
+  const upBtn = document.createElement('button');
+  upBtn.className = 'btn btn-icon btn-sm'; upBtn.textContent = '↑'; upBtn.title = 'Subir';
+  upBtn.addEventListener('click', () => {
+    const idx = state.productos.indexOf(p);
+    if (idx > 0) {
+      state.productos.splice(idx, 1);
+      state.productos.splice(idx - 1, 0, p);
+      markDirty(); renderInventario();
+    }
+  });
+
+  const downBtn = document.createElement('button');
+  downBtn.className = 'btn btn-icon btn-sm'; downBtn.textContent = '↓'; downBtn.title = 'Bajar';
+  downBtn.addEventListener('click', () => {
+    const idx = state.productos.indexOf(p);
+    if (idx < state.productos.length - 1) {
+      state.productos.splice(idx, 1);
+      state.productos.splice(idx + 1, 0, p);
+      markDirty(); renderInventario();
+    }
+  });
+
+  const orderGroup = document.createElement('div'); orderGroup.className = 'stock-action';
+  orderGroup.appendChild(upBtn); orderGroup.appendChild(downBtn);
+
   actDiv.appendChild(stockGroup);
   actDiv.appendChild(venderGroup);
+  actDiv.appendChild(orderGroup);
   tdActions.appendChild(actDiv);
 
   tr.appendChild(tdNombre);
