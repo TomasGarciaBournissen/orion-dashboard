@@ -702,8 +702,8 @@ function buildProductRow(p) {
   pvInp.addEventListener('change', e => {
     const newPV = toUSD(e.target.value);
     // markup = (pv / costo - 1) * 100, only if costo > 0
-    p.markupPct = p.costo > 0 ? Math.round(((newPV / p.costo) - 1) * 10000) / 100 : 0;
-    markupInp.value = p.markupPct;
+    p.markupPct = p.costo > 0 ? Math.round(((newPV / p.costo) - 1) * 1000000) / 10000 : 0;
+    markupInp.value = Math.round(p.markupPct * 100) / 100;
     refreshProductRow(tr, p);
     markDirty();
     if (activeTab === 'resumen') renderResumen();
