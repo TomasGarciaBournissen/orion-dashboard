@@ -4,17 +4,17 @@
     {
       "id": "cv1",
       "categoria": "Ads",
-      "monto": 0
+      "monto": 10
     },
     {
       "id": "cv2",
       "categoria": "Delivery",
-      "monto": 0
+      "monto": 28
     },
     {
       "id": "cv3",
       "categoria": "Packaging",
-      "monto": 0
+      "monto": 20
     }
   ],
   "productos": [
@@ -336,9 +336,18 @@
       "items": [],
       "montoPagado": 0,
       "notas": ""
+    },
+    {
+      "id": "V-0010",
+      "cliente": "abuela gloria (tomi)",
+      "fecha": "2026-06-05",
+      "estado": "Preorder impago",
+      "items": [],
+      "montoPagado": 0,
+      "notas": ""
     }
   ],
   "meta": {
-    "lastSaleSeq": 9
+    "lastSaleSeq": 10
   }
 }
