@@ -158,8 +158,8 @@
       "costo": 12,
       "envio": 0,
       "markupPct": 302.3333,
-      "stock": 1,
-      "comprados": 1,
+      "stock": 2,
+      "comprados": 2,
       "vendidos": 0
     },
     {
@@ -191,11 +191,11 @@
       "nombre": "0.70-Carat Cross Pendant Necklace",
       "variante": "0.70 ct",
       "categoria": "Necklaces",
-      "costo": 14,
+      "costo": 24,
       "envio": 0,
-      "markupPct": 392.6429,
-      "stock": 2,
-      "comprados": 2,
+      "markupPct": 244.8333,
+      "stock": 3,
+      "comprados": 3,
       "vendidos": 0
     },
     {
@@ -206,8 +206,8 @@
       "costo": 9.7,
       "envio": 0,
       "markupPct": 504.3299,
-      "stock": 2,
-      "comprados": 2,
+      "stock": 3,
+      "comprados": 3,
       "vendidos": 0
     },
     {
@@ -218,8 +218,8 @@
       "costo": 12.1,
       "envio": 0,
       "markupPct": 470,
-      "stock": 2,
-      "comprados": 2,
+      "stock": 3,
+      "comprados": 3,
       "vendidos": 0
     },
     {
@@ -242,8 +242,8 @@
       "costo": 70,
       "envio": 0,
       "markupPct": 116.7429,
-      "stock": 1,
-      "comprados": 2,
+      "stock": 2,
+      "comprados": 3,
       "vendidos": 1
     },
     {
