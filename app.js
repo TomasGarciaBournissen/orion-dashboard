@@ -616,7 +616,8 @@ function renderInventario() {
     table.className = 'inv-table';
     table.innerHTML = `
       <thead><tr>
-        <th>Producto / Variante</th>
+        <th>Nombre / Variante</th>
+        <th>Categoría</th>
         <th>ID</th>
         <th>Costo</th>
         <th>Envío</th>
@@ -668,15 +669,14 @@ function buildProductRow(p) {
     return inp;
   };
 
-  // Col: nombre+variante+categoria — all inline editable
+  // Col: nombre + variante (two stacked inputs)
   const tdNombre = document.createElement('td');
-  tdNombre.style.minWidth = '180px';
+  tdNombre.style.minWidth = '160px';
 
   const nombreInp = document.createElement('input');
   nombreInp.type = 'text'; nombreInp.value = p.nombre;
-  nombreInp.className = 'inv-nombre-inp';
   nombreInp.placeholder = 'Nombre';
-  nombreInp.style.cssText = 'width:100%;background:transparent;border:1px solid transparent;border-radius:6px;padding:.25rem .4rem;font-size:.84rem;font-weight:500;color:var(--silver-hi);font-family:var(--font)';
+  nombreInp.style.cssText = 'width:100%;background:transparent;border:1px solid transparent;border-radius:4px;padding:.22rem .35rem;font-size:.84rem;font-weight:500;color:var(--silver-hi);font-family:var(--font);display:block';
   nombreInp.addEventListener('focus', e => e.target.style.borderColor = 'var(--silver-lo)');
   nombreInp.addEventListener('blur',  e => { e.target.style.borderColor = 'transparent'; });
   nombreInp.addEventListener('change', e => { p.nombre = e.target.value; markDirty(); });
@@ -684,13 +684,18 @@ function buildProductRow(p) {
   const varianteInp = document.createElement('input');
   varianteInp.type = 'text'; varianteInp.value = p.variante;
   varianteInp.placeholder = 'Variante';
-  varianteInp.style.cssText = 'width:100%;background:transparent;border:1px solid transparent;border-radius:6px;padding:.2rem .4rem;font-size:.72rem;color:var(--silver-lo);font-family:var(--font);margin-top:.15rem';
+  varianteInp.style.cssText = 'width:100%;background:transparent;border:1px solid transparent;border-radius:4px;padding:.18rem .35rem;font-size:.72rem;color:var(--silver-lo);font-family:var(--font);display:block;margin-top:.1rem';
   varianteInp.addEventListener('focus', e => e.target.style.borderColor = 'var(--silver-lo)');
   varianteInp.addEventListener('blur',  e => { e.target.style.borderColor = 'transparent'; });
   varianteInp.addEventListener('change', e => { p.variante = e.target.value; markDirty(); });
 
+  tdNombre.appendChild(nombreInp);
+  tdNombre.appendChild(varianteInp);
+
+  // Col: categoria (own cell)
+  const tdCat = document.createElement('td');
   const catSel = document.createElement('select');
-  catSel.style.cssText = 'width:100%;background:var(--bg2);border:1px solid transparent;border-radius:6px;padding:.2rem .4rem;font-size:.7rem;color:var(--silver-lo);font-family:var(--font);margin-top:.15rem;cursor:pointer';
+  catSel.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:.3rem .4rem;font-size:.75rem;color:var(--silver);font-family:var(--font);cursor:pointer;width:100%';
   [...CATEGORIES, 'Other'].forEach(c => {
     const o = document.createElement('option');
     o.value = c; o.textContent = c;
@@ -698,10 +703,7 @@ function buildProductRow(p) {
     catSel.appendChild(o);
   });
   catSel.addEventListener('change', e => { p.categoria = e.target.value; markDirty(); renderInventario(); });
-
-  tdNombre.appendChild(nombreInp);
-  tdNombre.appendChild(varianteInp);
-  tdNombre.appendChild(catSel);
+  tdCat.appendChild(catSel);
 
   // Col: id
   const tdId = document.createElement('td');
@@ -829,6 +831,7 @@ function buildProductRow(p) {
   tdActions.appendChild(actDiv);
 
   tr.appendChild(tdNombre);
+  tr.appendChild(tdCat);
   tr.appendChild(tdId);
   tr.appendChild(tdCosto);
   tr.appendChild(tdEnvio);
@@ -850,16 +853,16 @@ function refreshProductRow(tr, p) {
   const gt = gananciaPorProducto(p);
 
   const tds = tr.querySelectorAll('td');
-  // td[5]=PV (input), td[6]=GU, td[7]=Stock, td[8]=Vendidos, td[9]=Comprados, td[10]=GT
-  const pvInput = tds[5].querySelector('input');
+  // td[0]=nombre, td[1]=cat, td[2]=id, td[3]=costo, td[4]=envio, td[5]=markup, td[6]=PV, td[7]=GU, td[8]=stock, td[9]=vendidos, td[10]=comprados, td[11]=GT
+  const pvInput = tds[6].querySelector('input');
   if (pvInput) pvInput.value = toDisplay(pv);
-  tds[6].textContent = fmt(gu);
-  tds[6].className = gu >= 0 ? 'text-green fw-600' : 'text-red fw-600';
-  tds[7].textContent = p.stock;
-  tds[8].textContent = p.vendidos;
-  tds[9].textContent = p.comprados;
-  tds[10].textContent = fmt(gt);
-  tds[10].className = gt >= 0 ? 'text-green' : 'text-red';
+  tds[7].textContent = fmt(gu);
+  tds[7].className = gu >= 0 ? 'text-green fw-600' : 'text-red fw-600';
+  tds[8].textContent = p.stock;
+  tds[9].textContent = p.vendidos;
+  tds[10].textContent = p.comprados;
+  tds[11].textContent = fmt(gt);
+  tds[11].className = gt >= 0 ? 'text-green' : 'text-red';
 }
 
 function addNewProducto() {
