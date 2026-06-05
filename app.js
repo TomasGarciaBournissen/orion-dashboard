@@ -35,8 +35,8 @@ const fmt = n => showARS
   ? '$' + Math.round(Number(n) * ARS_RATE).toLocaleString('es-AR') + ' ARS'
   : '$' + Number(n).toFixed(2);
 
-// Convert a raw input value to stored USD
-const toUSD = v => showARS ? (parseFloat(v) || 0) / ARS_RATE : (parseFloat(v) || 0);
+// Convert a raw input value to stored USD, rounded to 2 decimal cents
+const toUSD = v => showARS ? Math.round((parseFloat(v) || 0) / ARS_RATE * 100) / 100 : (parseFloat(v) || 0);
 
 // Convert a stored USD value to the display input value
 const toDisplay = n => showARS ? Math.round(Number(n) * ARS_RATE) : Number(n);
