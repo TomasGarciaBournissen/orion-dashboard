@@ -235,8 +235,110 @@
       "vendidos": 1
     }
   ],
-  "ventas": [],
+  "ventas": [
+    {
+      "id": "V-0002",
+      "cliente": "mama camilo",
+      "fecha": "2026-06-05",
+      "estado": "Preorder impago",
+      "items": [
+        {
+          "productoId": "EAR-STUD-5",
+          "cantidad": 1
+        }
+      ],
+      "montoPagado": 0,
+      "notas": ""
+    },
+    {
+      "id": "V-0003",
+      "cliente": "viejita beuan onda maria",
+      "fecha": "2026-06-05",
+      "estado": "Preorder pago",
+      "items": [
+        {
+          "productoId": "BRAC-TENNIS-3",
+          "cantidad": 1
+        },
+        {
+          "productoId": "EAR-STUD-5",
+          "cantidad": 1
+        },
+        {
+          "productoId": "RING-6CLAW-6",
+          "cantidad": 1
+        }
+      ],
+      "montoPagado": 62.5,
+      "notas": ""
+    },
+    {
+      "id": "V-0004",
+      "cliente": "mama mora",
+      "fecha": "2026-06-05",
+      "estado": "Vendido",
+      "items": [
+        {
+          "productoId": "EAR-STUD-5",
+          "cantidad": 1
+        }
+      ],
+      "montoPagado": 34.68,
+      "notas": ""
+    },
+    {
+      "id": "V-0005",
+      "cliente": "chichu",
+      "fecha": "2026-06-05",
+      "estado": "Vendido",
+      "items": [
+        {
+          "productoId": "EAR-STUD-5",
+          "cantidad": 1
+        }
+      ],
+      "montoPagado": 34.68,
+      "notas": ""
+    },
+    {
+      "id": "V-0006",
+      "cliente": "gainza",
+      "fecha": "2026-06-05",
+      "estado": "Vendido",
+      "items": [
+        {
+          "productoId": "EAR-STUD-65",
+          "cantidad": 1
+        }
+      ],
+      "montoPagado": 41.4,
+      "notas": ""
+    },
+    {
+      "id": "V-0007",
+      "cliente": "gloria (niniera)",
+      "fecha": "2026-06-05",
+      "estado": "Preorder impago",
+      "items": [
+        {
+          "productoId": "EAR-STUD-5",
+          "cantidad": 1
+        }
+      ],
+      "montoPagado": 0,
+      "notas": ""
+    },
+    {
+      "id": "V-0009",
+      "cliente": "tia manu",
+      "fecha": "2026-06-05",
+      "estado": "Preorder impago",
+      "items": [],
+      "montoPagado": 0,
+      "notas": ""
+    }
+  ],
   "meta": {
-    "lastSaleSeq": 0
+    "lastSaleSeq": 9
   }
 }
