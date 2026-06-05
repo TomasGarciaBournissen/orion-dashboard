@@ -334,7 +334,7 @@
       "fecha": "2026-06-05",
       "estado": "Preorder impago",
       "items": [],
-      "montoPagado": 0,
+      "montoPagado": 55.17,
       "notas": ""
     },
     {
@@ -342,8 +342,13 @@
       "cliente": "abuela gloria (tomi)",
       "fecha": "2026-06-05",
       "estado": "Preorder impago",
-      "items": [],
-      "montoPagado": 0,
+      "items": [
+        {
+          "productoId": "NECK-SOL-050",
+          "cantidad": 1
+        }
+      ],
+      "montoPagado": 58.62,
       "notas": ""
     }
   ],
