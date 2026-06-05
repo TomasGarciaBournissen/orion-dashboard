@@ -4,17 +4,17 @@
     {
       "id": "cv1",
       "categoria": "Ads",
-      "monto": 10
+      "monto": 10.34
     },
     {
       "id": "cv2",
       "categoria": "Delivery",
-      "monto": 28
+      "monto": 27.59
     },
     {
       "id": "cv3",
       "categoria": "Packaging",
-      "monto": 20
+      "monto": 20.69
     }
   ],
   "productos": [
@@ -25,7 +25,7 @@
       "categoria": "Earrings",
       "costo": 6.5,
       "envio": 0,
-      "markupPct": 431,
+      "markupPct": 430.4615,
       "stock": 3,
       "comprados": 3,
       "vendidos": 0
@@ -37,7 +37,7 @@
       "categoria": "Earrings",
       "costo": 8.5,
       "envio": 0,
-      "markupPct": 308,
+      "markupPct": 305.6471,
       "stock": 1,
       "comprados": 6,
       "vendidos": 5
@@ -49,7 +49,7 @@
       "categoria": "Earrings",
       "costo": 13.1,
       "envio": 0,
-      "markupPct": 216,
+      "markupPct": 215.8779,
       "stock": 3,
       "comprados": 4,
       "vendidos": 1
@@ -61,7 +61,7 @@
       "categoria": "Earrings",
       "costo": 8.6,
       "envio": 0,
-      "markupPct": 200,
+      "markupPct": 300.9302,
       "stock": 0,
       "comprados": 0,
       "vendidos": 0
@@ -73,7 +73,7 @@
       "categoria": "Earrings",
       "costo": 10.6,
       "envio": 0,
-      "markupPct": 200,
+      "markupPct": 290.3774,
       "stock": 0,
       "comprados": 0,
       "vendidos": 0
@@ -85,7 +85,7 @@
       "categoria": "Rings",
       "costo": 13,
       "envio": 0,
-      "markupPct": 431,
+      "markupPct": 430.5385,
       "stock": 1,
       "comprados": 2,
       "vendidos": 1
@@ -97,7 +97,7 @@
       "categoria": "Rings",
       "costo": 13,
       "envio": 0,
-      "markupPct": 431,
+      "markupPct": 430.5385,
       "stock": 2,
       "comprados": 2,
       "vendidos": 0
@@ -109,7 +109,7 @@
       "categoria": "Rings",
       "costo": 15.2,
       "envio": 0,
-      "markupPct": 354,
+      "markupPct": 353.75,
       "stock": 1,
       "comprados": 1,
       "vendidos": 0
@@ -121,7 +121,7 @@
       "categoria": "Rings",
       "costo": 15.2,
       "envio": 0,
-      "markupPct": 354,
+      "markupPct": 353.75,
       "stock": 1,
       "comprados": 1,
       "vendidos": 0
@@ -133,7 +133,7 @@
       "categoria": "Rings",
       "costo": 15.2,
       "envio": 0,
-      "markupPct": 354,
+      "markupPct": 353.75,
       "stock": 1,
       "comprados": 1,
       "vendidos": 0
@@ -145,7 +145,7 @@
       "categoria": "Rings",
       "costo": 12,
       "envio": 0,
-      "markupPct": 303,
+      "markupPct": 302.3333,
       "stock": 1,
       "comprados": 1,
       "vendidos": 0
@@ -157,7 +157,7 @@
       "categoria": "Rings",
       "costo": 12,
       "envio": 0,
-      "markupPct": 303,
+      "markupPct": 302.3333,
       "stock": 1,
       "comprados": 1,
       "vendidos": 0
@@ -169,7 +169,7 @@
       "categoria": "Rings",
       "costo": 12,
       "envio": 0,
-      "markupPct": 303,
+      "markupPct": 302.3333,
       "stock": 2,
       "comprados": 2,
       "vendidos": 0
@@ -181,7 +181,7 @@
       "categoria": "Rings",
       "costo": 9.8,
       "envio": 0,
-      "markupPct": 300,
+      "markupPct": 392.6531,
       "stock": 1,
       "comprados": 1,
       "vendidos": 0
@@ -193,7 +193,7 @@
       "categoria": "Necklaces",
       "costo": 14,
       "envio": 0,
-      "markupPct": 400,
+      "markupPct": 392.6429,
       "stock": 2,
       "comprados": 2,
       "vendidos": 0
@@ -205,7 +205,7 @@
       "categoria": "Necklaces",
       "costo": 9.7,
       "envio": 0,
-      "markupPct": 500,
+      "markupPct": 504.3299,
       "stock": 2,
       "comprados": 2,
       "vendidos": 0
@@ -217,7 +217,7 @@
       "categoria": "Necklaces",
       "costo": 12.1,
       "envio": 0,
-      "markupPct": 500,
+      "markupPct": 470,
       "stock": 2,
       "comprados": 2,
       "vendidos": 0
@@ -229,7 +229,7 @@
       "categoria": "Bracelets",
       "costo": 93.4,
       "envio": 0,
-      "markupPct": 60,
+      "markupPct": 62.4411,
       "stock": 1,
       "comprados": 2,
       "vendidos": 1
