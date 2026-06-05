@@ -25,9 +25,9 @@
       "categoria": "Earrings",
       "costo": 6.5,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 431,
+      "stock": 3,
+      "comprados": 3,
       "vendidos": 0
     },
     {
@@ -37,10 +37,10 @@
       "categoria": "Earrings",
       "costo": 8.5,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
-      "vendidos": 0
+      "markupPct": 308,
+      "stock": 1,
+      "comprados": 6,
+      "vendidos": 5
     },
     {
       "id": "EAR-STUD-65",
@@ -49,10 +49,10 @@
       "categoria": "Earrings",
       "costo": 13.1,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
-      "vendidos": 0
+      "markupPct": 216,
+      "stock": 3,
+      "comprados": 4,
+      "vendidos": 1
     },
     {
       "id": "EAR-HOOP-11",
@@ -61,7 +61,7 @@
       "categoria": "Earrings",
       "costo": 8.6,
       "envio": 0,
-      "markupPct": 0,
+      "markupPct": 200,
       "stock": 0,
       "comprados": 0,
       "vendidos": 0
@@ -73,7 +73,7 @@
       "categoria": "Earrings",
       "costo": 10.6,
       "envio": 0,
-      "markupPct": 0,
+      "markupPct": 200,
       "stock": 0,
       "comprados": 0,
       "vendidos": 0
@@ -85,10 +85,10 @@
       "categoria": "Rings",
       "costo": 13,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
-      "vendidos": 0
+      "markupPct": 431,
+      "stock": 1,
+      "comprados": 2,
+      "vendidos": 1
     },
     {
       "id": "RING-6CLAW-65",
@@ -97,9 +97,9 @@
       "categoria": "Rings",
       "costo": 13,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 431,
+      "stock": 2,
+      "comprados": 2,
       "vendidos": 0
     },
     {
@@ -109,9 +109,9 @@
       "categoria": "Rings",
       "costo": 15.2,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 354,
+      "stock": 1,
+      "comprados": 1,
       "vendidos": 0
     },
     {
@@ -121,9 +121,9 @@
       "categoria": "Rings",
       "costo": 15.2,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 354,
+      "stock": 1,
+      "comprados": 1,
       "vendidos": 0
     },
     {
@@ -133,9 +133,9 @@
       "categoria": "Rings",
       "costo": 15.2,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 354,
+      "stock": 1,
+      "comprados": 1,
       "vendidos": 0
     },
     {
@@ -145,9 +145,9 @@
       "categoria": "Rings",
       "costo": 12,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 303,
+      "stock": 1,
+      "comprados": 1,
       "vendidos": 0
     },
     {
@@ -157,9 +157,9 @@
       "categoria": "Rings",
       "costo": 12,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 303,
+      "stock": 1,
+      "comprados": 1,
       "vendidos": 0
     },
     {
@@ -169,9 +169,9 @@
       "categoria": "Rings",
       "costo": 12,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 303,
+      "stock": 2,
+      "comprados": 2,
       "vendidos": 0
     },
     {
@@ -181,9 +181,9 @@
       "categoria": "Rings",
       "costo": 9.8,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 300,
+      "stock": 1,
+      "comprados": 1,
       "vendidos": 0
     },
     {
@@ -193,9 +193,9 @@
       "categoria": "Necklaces",
       "costo": 14,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 400,
+      "stock": 2,
+      "comprados": 2,
       "vendidos": 0
     },
     {
@@ -205,9 +205,9 @@
       "categoria": "Necklaces",
       "costo": 9.7,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 500,
+      "stock": 2,
+      "comprados": 2,
       "vendidos": 0
     },
     {
@@ -217,9 +217,9 @@
       "categoria": "Necklaces",
       "costo": 12.1,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
+      "markupPct": 500,
+      "stock": 2,
+      "comprados": 2,
       "vendidos": 0
     },
     {
@@ -229,10 +229,10 @@
       "categoria": "Bracelets",
       "costo": 93.4,
       "envio": 0,
-      "markupPct": 0,
-      "stock": 0,
-      "comprados": 0,
-      "vendidos": 0
+      "markupPct": 60,
+      "stock": 1,
+      "comprados": 2,
+      "vendidos": 1
     }
   ],
   "ventas": [],
