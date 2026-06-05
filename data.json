@@ -62,8 +62,8 @@
       "costo": 8.6,
       "envio": 0,
       "markupPct": 300.9302,
-      "stock": 0,
-      "comprados": 0,
+      "stock": 2,
+      "comprados": 2,
       "vendidos": 0
     },
     {
@@ -74,13 +74,13 @@
       "costo": 10.6,
       "envio": 0,
       "markupPct": 290.3774,
-      "stock": 0,
-      "comprados": 0,
+      "stock": 2,
+      "comprados": 2,
       "vendidos": 0
     },
     {
       "id": "RING-6CLAW-6",
-      "nombre": "1-Carat 6-Claw Moissanite Ring",
+      "nombre": "solitario 1ct",
       "variante": "Size 6",
       "categoria": "Rings",
       "costo": 13,
@@ -92,7 +92,7 @@
     },
     {
       "id": "RING-6CLAW-65",
-      "nombre": "1-Carat 6-Claw Moissanite Ring",
+      "nombre": "solitario 1ct",
       "variante": "Size 6.5",
       "categoria": "Rings",
       "costo": 13,
@@ -182,8 +182,8 @@
       "costo": 9.8,
       "envio": 0,
       "markupPct": 392.6531,
-      "stock": 1,
-      "comprados": 1,
+      "stock": 2,
+      "comprados": 2,
       "vendidos": 0
     },
     {
@@ -223,16 +223,40 @@
       "vendidos": 0
     },
     {
+      "id": "PROD-I4NZQZ45",
+      "nombre": "Tennis Bracelet - 2mm",
+      "variante": "",
+      "categoria": "Bracelets",
+      "costo": 60,
+      "envio": 0,
+      "markupPct": 129.8833,
+      "stock": 0,
+      "comprados": 0,
+      "vendidos": 0
+    },
+    {
       "id": "BRAC-TENNIS-3",
       "nombre": "Tennis Bracelet – 3 mm",
       "variante": "6.5 in",
       "categoria": "Bracelets",
-      "costo": 93.4,
+      "costo": 70,
       "envio": 0,
-      "markupPct": 62.4411,
+      "markupPct": 116.7429,
       "stock": 1,
       "comprados": 2,
       "vendidos": 1
+    },
+    {
+      "id": "PROD-DUTU13L8",
+      "nombre": "Tennis Bracelet - 4mm",
+      "variante": "",
+      "categoria": "Bracelets",
+      "costo": 90,
+      "envio": 0,
+      "markupPct": 99.2333,
+      "stock": 0,
+      "comprados": 0,
+      "vendidos": 0
     }
   ],
   "ventas": [
