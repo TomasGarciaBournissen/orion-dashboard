@@ -1,0 +1,1254 @@
+/* ============================================================
+   ORION LUX PANEL — app.js
+   Vanilla JS, no build step, runs on GitHub Pages.
+   ============================================================ */
+
+'use strict';
+
+// ─────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────
+const VAULT_KEY    = 'orionlux_vault';
+const REPO_CFG_KEY = 'orionlux_repo';
+const PBKDF2_ITER  = 150000;
+
+// ─────────────────────────────────────────────────────────────
+// APP STATE
+// ─────────────────────────────────────────────────────────────
+let ghToken   = null;   // decrypted PAT — in-memory only
+let fileSha   = null;   // current SHA from GitHub API
+let savedJSON = '';     // last JSON pushed to GitHub (for dirty check)
+let state     = null;   // live app state (deep copy of data.json)
+let activeTab = 'costos';
+let ventasFilter = 'all';
+let ventasSearch = '';
+
+// ─────────────────────────────────────────────────────────────
+// UTILITY
+// ─────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Number(n).toFixed(2);
+
+function toast(msg, type = 'info', duration = 4000) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (type !== 'info' ? ' ' + type : '');
+  el.textContent = msg;
+  $('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), duration);
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function pad(n, len = 4) {
+  return String(n).padStart(len, '0');
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+// ─────────────────────────────────────────────────────────────
+// DERIVED FINANCE
+// ─────────────────────────────────────────────────────────────
+function precioVenta(p) {
+  return p.costo * (1 + p.markupPct / 100);
+}
+
+function gananciaUnidad(p) {
+  return precioVenta(p) - p.costo - p.envio;
+}
+
+function gananciaPorProducto(p) {
+  return p.vendidos * gananciaUnidad(p);
+}
+
+function ventaMonto(venta) {
+  let total = 0;
+  for (const item of venta.items) {
+    const p = state.productos.find(x => x.id === item.productoId);
+    if (p) total += item.cantidad * precioVenta(p);
+  }
+  return total;
+}
+
+function ventaSaldo(venta) {
+  return ventaMonto(venta) - (venta.montoPagado || 0);
+}
+
+// ─────────────────────────────────────────────────────────────
+// WEB CRYPTO — vault helpers
+// ─────────────────────────────────────────────────────────────
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const keyMat = await crypto.subtle.importKey(
+    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, hash: 'SHA-256', iterations: PBKDF2_ITER },
+    keyMat,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+function b64encode(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+
+function b64decode(str) {
+  return Uint8Array.from(atob(str), c => c.charCodeAt(0));
+}
+
+async function encryptToken(token, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await deriveKey(password, salt);
+  const enc  = new TextEncoder();
+  const ct   = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(token));
+  return {
+    salt:       b64encode(salt),
+    iv:         b64encode(iv),
+    ciphertext: b64encode(ct)
+  };
+}
+
+async function decryptToken(vault, password) {
+  const salt = b64decode(vault.salt);
+  const iv   = b64decode(vault.iv);
+  const ct   = b64decode(vault.ciphertext);
+  const key  = await deriveKey(password, salt);
+  const dec  = new TextDecoder();
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return dec.decode(plain);
+}
+
+function loadVault() {
+  try { return JSON.parse(localStorage.getItem(VAULT_KEY)); }
+  catch { return null; }
+}
+
+function saveVault(v) {
+  localStorage.setItem(VAULT_KEY, JSON.stringify(v));
+}
+
+function clearVault() {
+  localStorage.removeItem(VAULT_KEY);
+}
+
+// ─────────────────────────────────────────────────────────────
+// REPO CONFIG
+// ─────────────────────────────────────────────────────────────
+function loadRepoCfg() {
+  try { return JSON.parse(localStorage.getItem(REPO_CFG_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function saveRepoCfg(cfg) {
+  localStorage.setItem(REPO_CFG_KEY, JSON.stringify(cfg));
+}
+
+function repoCfgComplete() {
+  const c = loadRepoCfg();
+  return !!(c.owner && c.repo);
+}
+
+// ─────────────────────────────────────────────────────────────
+// GITHUB API
+// ─────────────────────────────────────────────────────────────
+function apiHeaders() {
+  return {
+    'Authorization': `Bearer ${ghToken}`,
+    'Accept': 'application/vnd.github+json',
+    'Content-Type': 'application/json'
+  };
+}
+
+function contentsUrl() {
+  const c = loadRepoCfg();
+  const branch = c.branch || 'main';
+  const path   = c.path   || 'data.json';
+  return `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${path}?ref=${branch}`;
+}
+
+function b64encodeUtf8(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+function b64decodeUtf8(b64) {
+  return decodeURIComponent(escape(atob(b64)));
+}
+
+async function fetchRemoteData() {
+  if (!repoCfgComplete()) return null;
+  setSyncStatus('syncing', 'Cargando…');
+  try {
+    const res = await fetch(contentsUrl(), { headers: apiHeaders() });
+    if (!res.ok) {
+      if (res.status === 401) { toast('Token inválido o expirado.', 'error'); }
+      else { toast(`Error al cargar datos (${res.status})`, 'error'); }
+      return null;
+    }
+    const json = await res.json();
+    fileSha = json.sha;
+    return JSON.parse(b64decodeUtf8(json.content.replace(/\n/g, '')));
+  } catch (e) {
+    toast('Error de red al cargar datos.', 'error');
+    return null;
+  }
+}
+
+async function pushData() {
+  if (!repoCfgComplete()) {
+    toast('Configurá el repositorio en ⚙️ antes de guardar.', 'warning');
+    return;
+  }
+  const c       = loadRepoCfg();
+  const branch  = c.branch || 'main';
+  const path    = c.path   || 'data.json';
+  const content = JSON.stringify(state, null, 2);
+  const b64     = b64encodeUtf8(content);
+  const ts      = new Date().toISOString().slice(0, 16).replace('T', ' ');
+
+  setSyncStatus('saving', 'Publicando…');
+
+  const body = {
+    message: `panel: actualización ${ts}`,
+    content: b64,
+    sha:     fileSha,
+    branch
+  };
+
+  const url = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${path}`;
+
+  try {
+    let res = await fetch(url, { method: 'PUT', headers: apiHeaders(), body: JSON.stringify(body) });
+
+    if (res.status === 409) {
+      // sha conflict — refresh and retry once
+      const fresh = await fetchRemoteData();
+      if (fresh) state = fresh;
+      body.sha = fileSha;
+      res = await fetch(url, { method: 'PUT', headers: apiHeaders(), body: JSON.stringify(body) });
+    }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      if (res.status === 401) toast('Token inválido o expirado.', 'error');
+      else toast(`Error al guardar (${res.status}): ${errText.slice(0, 100)}`, 'error');
+      setSyncStatus('error', 'Error al guardar');
+      return;
+    }
+
+    const data = await res.json();
+    fileSha  = data.content.sha;
+    savedJSON = content;
+    setSyncStatus('saved', 'Publicado ✓');
+    toast('Publicado ✓ — el sitio se está redeployando', 'success');
+  } catch (e) {
+    toast('Error de red al guardar.', 'error');
+    setSyncStatus('error', 'Sin conexión');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// SYNC STATUS
+// ─────────────────────────────────────────────────────────────
+function setSyncStatus(type, text) {
+  const el = $('sync-status');
+  el.className = 'sync-status ' + type;
+  el.textContent = text;
+}
+
+function markDirty() {
+  const current = JSON.stringify(state, null, 2);
+  if (current !== savedJSON) {
+    setSyncStatus('unsaved', 'Cambios sin guardar');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// LOGIN SCREEN SETUP
+// ─────────────────────────────────────────────────────────────
+function setupLogin() {
+  const vault = loadVault();
+  const tokenField = $('login-token-field');
+  const resetBtn   = $('btn-reset-vault');
+
+  if (vault) {
+    tokenField.classList.add('hidden');
+    resetBtn.classList.remove('hidden');
+  } else {
+    tokenField.classList.remove('hidden');
+    resetBtn.classList.add('hidden');
+  }
+
+  $('inp-pass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') attemptLogin();
+  });
+  $('inp-token').addEventListener('keydown', e => {
+    if (e.key === 'Enter') attemptLogin();
+  });
+
+  $('btn-login').addEventListener('click', attemptLogin);
+
+  $('btn-reset-vault').addEventListener('click', () => {
+    clearVault();
+    $('login-error').textContent = '';
+    setupLogin();
+  });
+}
+
+async function attemptLogin() {
+  const passEl   = $('inp-pass');
+  const tokenEl  = $('inp-token');
+  const errorEl  = $('login-error');
+  const password = passEl.value;
+
+  if (!password) { errorEl.textContent = 'Ingresá tu contraseña.'; return; }
+
+  errorEl.textContent = '';
+  $('btn-login').textContent = 'Ingresando…';
+  $('btn-login').disabled = true;
+
+  try {
+    const vault = loadVault();
+
+    if (vault) {
+      // Returning user — decrypt stored token
+      let token;
+      try {
+        token = await decryptToken(vault, password);
+      } catch {
+        errorEl.textContent = 'Contraseña incorrecta.';
+        $('btn-login').textContent = 'Entrar';
+        $('btn-login').disabled = false;
+        return;
+      }
+      if (!token || (!token.startsWith('ghp_') && !token.startsWith('github_pat_'))) {
+        errorEl.textContent = 'Contraseña incorrecta.';
+        $('btn-login').textContent = 'Entrar';
+        $('btn-login').disabled = false;
+        return;
+      }
+      ghToken = token;
+    } else {
+      // First run — encrypt and save token
+      const token = tokenEl.value.trim();
+      if (!token) { errorEl.textContent = 'Ingresá tu token de GitHub.'; $('btn-login').textContent = 'Entrar'; $('btn-login').disabled = false; return; }
+      const newVault = await encryptToken(token, password);
+      saveVault(newVault);
+      ghToken = token;
+    }
+
+    passEl.value  = '';
+    tokenEl.value = '';
+    await enterDashboard();
+  } catch (e) {
+    errorEl.textContent = 'Error inesperado: ' + e.message;
+    $('btn-login').textContent = 'Entrar';
+    $('btn-login').disabled = false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// DASHBOARD ENTRY
+// ─────────────────────────────────────────────────────────────
+async function enterDashboard() {
+  $('login-screen').style.display = 'none';
+  $('app').classList.add('visible');
+  $('btn-login').textContent = 'Entrar';
+  $('btn-login').disabled = false;
+
+  // Load data
+  if (repoCfgComplete()) {
+    const remote = await fetchRemoteData();
+    if (remote) {
+      state = remote;
+    } else {
+      await loadLocalData();
+    }
+  } else {
+    await loadLocalData();
+    setSyncStatus('unsaved', 'Sin repo configurado');
+  }
+
+  savedJSON = JSON.stringify(state, null, 2);
+
+  if (!repoCfgComplete()) {
+    showNoBanner();
+  } else {
+    setSyncStatus('saved', 'Al día');
+  }
+
+  renderAll();
+  setupTopBar();
+  setupTabs();
+  setupSettings();
+}
+
+async function loadLocalData() {
+  try {
+    const res = await fetch('data.json');
+    state = await res.json();
+  } catch {
+    state = { currency:'USD', costosVariables:[], productos:[], ventas:[], meta:{ lastSaleSeq:0 } };
+  }
+}
+
+function showNoBanner() {
+  const banner = document.createElement('div');
+  banner.className = 'banner';
+  banner.id = 'no-repo-banner';
+  banner.innerHTML = '⚠️ No hay repositorio configurado. Configurá <strong>owner</strong> y <strong>repo</strong> en ⚙️ para activar el guardado en la nube.';
+  document.querySelector('.main-content').prepend(banner);
+}
+
+// ─────────────────────────────────────────────────────────────
+// TOP BAR
+// ─────────────────────────────────────────────────────────────
+function setupTopBar() {
+  $('btn-save').addEventListener('click', pushData);
+  $('btn-logout').addEventListener('click', logout);
+}
+
+function logout() {
+  ghToken   = null;
+  fileSha   = null;
+  savedJSON = '';
+  state     = null;
+  $('app').classList.remove('visible');
+  $('login-screen').style.display = '';
+  setupLogin();
+  // re-render clears old DOM but we fully rebuild on next login
+}
+
+// ─────────────────────────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────────────────────────
+function setupTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
+  if (tab === 'resumen') renderResumen();
+}
+
+// ─────────────────────────────────────────────────────────────
+// SETTINGS MODAL
+// ─────────────────────────────────────────────────────────────
+function setupSettings() {
+  $('btn-settings').addEventListener('click', openSettings);
+  $('btn-settings-cancel').addEventListener('click', closeSettings);
+  $('btn-settings-save').addEventListener('click', saveSettings);
+  $('settings-modal').addEventListener('click', e => {
+    if (e.target === $('settings-modal')) closeSettings();
+  });
+}
+
+function openSettings() {
+  const c = loadRepoCfg();
+  $('cfg-owner').value  = c.owner  || '';
+  $('cfg-repo').value   = c.repo   || '';
+  $('cfg-branch').value = c.branch || 'main';
+  $('cfg-path').value   = c.path   || 'data.json';
+  $('settings-modal').classList.add('open');
+}
+
+function closeSettings() {
+  $('settings-modal').classList.remove('open');
+}
+
+function saveSettings() {
+  const cfg = {
+    owner:  $('cfg-owner').value.trim(),
+    repo:   $('cfg-repo').value.trim(),
+    branch: $('cfg-branch').value.trim() || 'main',
+    path:   $('cfg-path').value.trim() || 'data.json'
+  };
+  saveRepoCfg(cfg);
+  closeSettings();
+  toast('Configuración guardada.', 'success');
+  const banner = $('no-repo-banner');
+  if (banner) banner.remove();
+  if (repoCfgComplete()) {
+    fetchRemoteData().then(remote => {
+      if (remote) { state = remote; savedJSON = JSON.stringify(state, null, 2); renderAll(); setSyncStatus('saved', 'Al día'); }
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// RENDER ALL
+// ─────────────────────────────────────────────────────────────
+function renderAll() {
+  renderCostos();
+  renderInventario();
+  renderVentas();
+  if (activeTab === 'resumen') renderResumen();
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TAB 1 — COSTOS
+// ─────────────────────────────────────────────────────────────
+function renderCostos() {
+  const list = $('costos-list');
+  list.innerHTML = '';
+
+  for (const costo of state.costosVariables) {
+    const row = document.createElement('div');
+    row.className = 'costo-row';
+    row.dataset.id = costo.id;
+
+    const catInput = document.createElement('input');
+    catInput.type  = 'text';
+    catInput.value = costo.categoria;
+    catInput.placeholder = 'Categoría';
+    catInput.addEventListener('input', e => {
+      costo.categoria = e.target.value;
+      markDirty();
+    });
+
+    const montoInput = document.createElement('input');
+    montoInput.type        = 'number';
+    montoInput.value       = costo.monto;
+    montoInput.placeholder = '0.00';
+    montoInput.min         = '0';
+    montoInput.step        = '0.01';
+    montoInput.addEventListener('input', e => {
+      costo.monto = parseFloat(e.target.value) || 0;
+      updateCostosTotal();
+      markDirty();
+      if (activeTab === 'resumen') renderResumen();
+    });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-icon btn-danger';
+    delBtn.innerHTML = '🗑';
+    delBtn.title = 'Eliminar';
+    delBtn.addEventListener('click', () => {
+      state.costosVariables = state.costosVariables.filter(c => c.id !== costo.id);
+      renderCostos();
+      markDirty();
+      if (activeTab === 'resumen') renderResumen();
+    });
+
+    row.appendChild(catInput);
+    row.appendChild(montoInput);
+    row.appendChild(delBtn);
+    list.appendChild(row);
+  }
+
+  updateCostosTotal();
+
+  $('btn-add-costo').onclick = () => {
+    state.costosVariables.push({ id: 'cv-' + uid(), categoria: '', monto: 0 });
+    renderCostos();
+    markDirty();
+  };
+}
+
+function updateCostosTotal() {
+  const total = state.costosVariables.reduce((s, c) => s + (c.monto || 0), 0);
+  $('costos-total').textContent = fmt(total);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TAB 2 — INVENTARIO
+// ─────────────────────────────────────────────────────────────
+const CATEGORIES = ['Earrings', 'Rings', 'Necklaces', 'Bracelets'];
+
+function renderInventario() {
+  const container = $('inventario-content');
+  container.innerHTML = '';
+
+  const allCats = [...new Set(state.productos.map(p => p.categoria))];
+  const orderedCats = [...CATEGORIES.filter(c => allCats.includes(c)), ...allCats.filter(c => !CATEGORIES.includes(c))];
+
+  for (const cat of orderedCats) {
+    const prods = state.productos.filter(p => p.categoria === cat);
+    if (!prods.length) continue;
+
+    const header = document.createElement('div');
+    header.className = 'inv-category-header';
+    header.textContent = cat;
+    container.appendChild(header);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'inv-table-wrap card';
+    wrap.style.padding = '0';
+    wrap.style.marginBottom = '0.5rem';
+
+    const table = document.createElement('table');
+    table.className = 'inv-table';
+    table.innerHTML = `
+      <thead><tr>
+        <th>Producto / Variante</th>
+        <th>ID</th>
+        <th>Costo</th>
+        <th>Envío</th>
+        <th>Markup %</th>
+        <th>P. Venta</th>
+        <th>Ganancia/u</th>
+        <th>Stock</th>
+        <th>Vendidos</th>
+        <th>Comprados</th>
+        <th>Ganancia total</th>
+        <th>Acciones</th>
+      </tr></thead>
+      <tbody></tbody>`;
+
+    const tbody = table.querySelector('tbody');
+
+    for (const p of prods) {
+      tbody.appendChild(buildProductRow(p));
+    }
+
+    wrap.appendChild(table);
+    container.appendChild(wrap);
+  }
+
+  $('btn-add-producto').onclick = addNewProducto;
+}
+
+function buildProductRow(p) {
+  const tr = document.createElement('tr');
+  tr.dataset.id = p.id;
+
+  const pv = precioVenta(p);
+  const gu = gananciaUnidad(p);
+  const gt = gananciaPorProducto(p);
+
+  const numInput = (val, field, step = '0.01', width = '70px') => {
+    const inp = document.createElement('input');
+    inp.type  = 'number';
+    inp.value = val;
+    inp.step  = step;
+    inp.min   = '0';
+    inp.style.width = width;
+    inp.addEventListener('change', e => {
+      p[field] = parseFloat(e.target.value) || 0;
+      refreshProductRow(tr, p);
+      markDirty();
+      if (activeTab === 'resumen') renderResumen();
+    });
+    return inp;
+  };
+
+  // Col: nombre+variante
+  const tdNombre = document.createElement('td');
+  const isNew = !!tr.closest; // always true, used to detect edit mode
+  tdNombre.innerHTML = `<span class="inv-nombre">${escHtml(p.nombre)}</span><span class="inv-variante">${escHtml(p.variante)}</span>`;
+
+  // Col: id
+  const tdId = document.createElement('td');
+  tdId.innerHTML = `<span class="inv-id-badge">${escHtml(p.id)}</span>`;
+
+  // Editable cols
+  const tdCosto  = document.createElement('td'); tdCosto.appendChild(numInput(p.costo, 'costo'));
+  const tdEnvio  = document.createElement('td'); tdEnvio.appendChild(numInput(p.envio, 'envio'));
+  const tdMarkup = document.createElement('td'); tdMarkup.appendChild(numInput(p.markupPct, 'markupPct', '1', '65px'));
+
+  // Derived cols
+  const tdPV = document.createElement('td');
+  tdPV.textContent = fmt(pv);
+  tdPV.classList.add('fw-600');
+
+  const tdGU = document.createElement('td');
+  tdGU.textContent = fmt(gu);
+  tdGU.className = gu >= 0 ? 'text-green fw-600' : 'text-red fw-600';
+
+  const tdStock   = document.createElement('td'); tdStock.textContent   = p.stock;   tdStock.className = 'fw-600';
+  const tdVendidos= document.createElement('td'); tdVendidos.textContent= p.vendidos;
+  const tdComprados=document.createElement('td'); tdComprados.textContent=p.comprados;
+
+  const tdGT = document.createElement('td');
+  tdGT.textContent = fmt(gt);
+  tdGT.className = gt >= 0 ? 'text-green' : 'text-red';
+
+  // Actions
+  const tdActions = document.createElement('td');
+  tdActions.innerHTML = '';
+
+  const actDiv = document.createElement('div');
+  actDiv.className = 'inv-actions';
+
+  // + Stock
+  const stockInp = document.createElement('input');
+  stockInp.type  = 'number'; stockInp.value = '1'; stockInp.min = '1'; stockInp.className = 'input-sm';
+  stockInp.style.width = '48px';
+  const stockBtn = document.createElement('button');
+  stockBtn.className = 'btn btn-green btn-sm';
+  stockBtn.textContent = '+ Stock';
+  stockBtn.addEventListener('click', () => {
+    const n = parseInt(stockInp.value) || 1;
+    p.stock    += n;
+    p.comprados += n;
+    refreshProductRow(tr, p);
+    markDirty();
+    if (activeTab === 'resumen') renderResumen();
+  });
+
+  // − Vender
+  const venderInp = document.createElement('input');
+  venderInp.type  = 'number'; venderInp.value = '1'; venderInp.min = '1'; venderInp.className = 'input-sm';
+  venderInp.style.width = '48px';
+  const venderBtn = document.createElement('button');
+  venderBtn.className = 'btn btn-danger btn-sm';
+  venderBtn.textContent = '− Vender';
+  venderBtn.addEventListener('click', () => {
+    const n = parseInt(venderInp.value) || 1;
+    if (p.stock < n) { toast(`Stock insuficiente. Stock actual: ${p.stock}`, 'error'); return; }
+    p.stock    -= n;
+    p.vendidos += n;
+    refreshProductRow(tr, p);
+    markDirty();
+    if (activeTab === 'resumen') renderResumen();
+  });
+
+  const stockGroup  = document.createElement('div'); stockGroup.className = 'stock-action';
+  stockGroup.appendChild(stockInp); stockGroup.appendChild(stockBtn);
+  const venderGroup = document.createElement('div'); venderGroup.className = 'stock-action';
+  venderGroup.appendChild(venderInp); venderGroup.appendChild(venderBtn);
+
+  actDiv.appendChild(stockGroup);
+  actDiv.appendChild(venderGroup);
+  tdActions.appendChild(actDiv);
+
+  tr.appendChild(tdNombre);
+  tr.appendChild(tdId);
+  tr.appendChild(tdCosto);
+  tr.appendChild(tdEnvio);
+  tr.appendChild(tdMarkup);
+  tr.appendChild(tdPV);
+  tr.appendChild(tdGU);
+  tr.appendChild(tdStock);
+  tr.appendChild(tdVendidos);
+  tr.appendChild(tdComprados);
+  tr.appendChild(tdGT);
+  tr.appendChild(tdActions);
+
+  return tr;
+}
+
+function refreshProductRow(tr, p) {
+  const pv = precioVenta(p);
+  const gu = gananciaUnidad(p);
+  const gt = gananciaPorProducto(p);
+
+  const tds = tr.querySelectorAll('td');
+  // td[5]=PV, td[6]=GU, td[7]=Stock, td[8]=Vendidos, td[9]=Comprados, td[10]=GT
+  tds[5].textContent = fmt(pv);
+  tds[6].textContent = fmt(gu);
+  tds[6].className = gu >= 0 ? 'text-green fw-600' : 'text-red fw-600';
+  tds[7].textContent = p.stock;
+  tds[8].textContent = p.vendidos;
+  tds[9].textContent = p.comprados;
+  tds[10].textContent = fmt(gt);
+  tds[10].className = gt >= 0 ? 'text-green' : 'text-red';
+}
+
+function addNewProducto() {
+  const id = 'PROD-' + uid().toUpperCase();
+  const nuevo = {
+    id, nombre: '', variante: '', categoria: 'Other',
+    costo: 0, envio: 0, markupPct: 0, stock: 0, comprados: 0, vendidos: 0
+  };
+
+  // Show a mini form in a card
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.marginBottom = '1rem';
+  card.innerHTML = `
+    <div class="section-title" style="margin-bottom:1rem;font-size:0.8rem">Nuevo producto</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.65rem;margin-bottom:1rem">
+      <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Nombre</label><input type="text" id="np-nombre" /></div>
+      <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Variante</label><input type="text" id="np-variante" /></div>
+      <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Categoría</label>
+        <select id="np-cat">
+          <option>Earrings</option><option>Rings</option><option>Necklaces</option><option>Bracelets</option><option>Other</option>
+        </select></div>
+      <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Costo ($)</label><input type="number" id="np-costo" value="0" min="0" step="0.01" /></div>
+      <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Envío ($)</label><input type="number" id="np-envio" value="0" min="0" step="0.01" /></div>
+      <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Markup %</label><input type="number" id="np-markup" value="0" min="0" step="1" /></div>
+    </div>
+    <div style="font-size:0.72rem;color:var(--silver-lo);margin-bottom:.75rem">ID generado: <span style="font-family:monospace;color:var(--silver)">${escHtml(id)}</span></div>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-accent" id="np-confirm">Crear producto</button>
+      <button class="btn" id="np-cancel">Cancelar</button>
+    </div>`;
+
+  const invContent = $('inventario-content');
+  invContent.prepend(card);
+
+  card.querySelector('#np-cancel').addEventListener('click', () => { card.remove(); });
+  card.querySelector('#np-confirm').addEventListener('click', () => {
+    nuevo.nombre    = card.querySelector('#np-nombre').value.trim()  || 'Producto';
+    nuevo.variante  = card.querySelector('#np-variante').value.trim();
+    nuevo.categoria = card.querySelector('#np-cat').value;
+    nuevo.costo     = parseFloat(card.querySelector('#np-costo').value)  || 0;
+    nuevo.envio     = parseFloat(card.querySelector('#np-envio').value)  || 0;
+    nuevo.markupPct = parseFloat(card.querySelector('#np-markup').value) || 0;
+    state.productos.push(nuevo);
+    card.remove();
+    renderInventario();
+    markDirty();
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TAB 3 — VENTAS
+// ─────────────────────────────────────────────────────────────
+function renderVentas() {
+  const list = $('ventas-list');
+  list.innerHTML = '';
+
+  let ventas = [...state.ventas].reverse(); // newest first
+
+  if (ventasFilter !== 'all') {
+    ventas = ventas.filter(v => v.estado === ventasFilter);
+  }
+  if (ventasSearch.trim()) {
+    const q = ventasSearch.trim().toLowerCase();
+    ventas = ventas.filter(v => (v.cliente || '').toLowerCase().includes(q));
+  }
+
+  for (const v of ventas) {
+    list.appendChild(buildVentaCard(v));
+  }
+
+  if (!ventas.length) {
+    list.innerHTML = '<div class="text-muted" style="padding:2rem;text-align:center;font-size:0.85rem">No hay ventas.</div>';
+  }
+
+  // Filters
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.onclick = () => {
+      ventasFilter = chip.dataset.filter;
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c === chip));
+      renderVentas();
+    };
+  });
+
+  $('ventas-search').value = ventasSearch;
+  $('ventas-search').oninput = e => {
+    ventasSearch = e.target.value;
+    renderVentas();
+  };
+
+  $('btn-new-venta').onclick = createVenta;
+}
+
+function buildVentaCard(venta) {
+  const card = document.createElement('div');
+  card.className = 'venta-card';
+  card.dataset.id = venta.id;
+
+  const monto  = ventaMonto(venta);
+  const saldo  = ventaSaldo(venta);
+
+  const estadoClass = {
+    'Preorder impago':  'estado-impago',
+    'Preorder pago':    'estado-pago',
+    'Vendido':          'estado-vendido'
+  }[venta.estado] || '';
+
+  // ── Header ──
+  const header = document.createElement('div');
+  header.className = 'venta-header';
+
+  const idSpan = document.createElement('span');
+  idSpan.className = 'venta-id';
+  idSpan.textContent = venta.id;
+
+  const fields = document.createElement('div');
+  fields.className = 'venta-header-fields';
+
+  const clienteInp = document.createElement('input');
+  clienteInp.type  = 'text';
+  clienteInp.value = venta.cliente || '';
+  clienteInp.placeholder = 'Cliente';
+  clienteInp.addEventListener('change', e => { venta.cliente = e.target.value; markDirty(); renderResumen(); });
+
+  const fechaInp = document.createElement('input');
+  fechaInp.type  = 'date';
+  fechaInp.value = venta.fecha || '';
+  fechaInp.addEventListener('change', e => { venta.fecha = e.target.value; markDirty(); });
+
+  const estadoSel = document.createElement('select');
+  ['Preorder impago', 'Preorder pago', 'Vendido'].forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt; o.textContent = opt;
+    if (opt === venta.estado) o.selected = true;
+    estadoSel.appendChild(o);
+  });
+  estadoSel.addEventListener('change', e => {
+    venta.estado = e.target.value;
+    // update badge
+    const badge = header.querySelector('.estado-badge');
+    badge.className = 'estado-badge ' + ({
+      'Preorder impago': 'estado-impago',
+      'Preorder pago':   'estado-pago',
+      'Vendido':         'estado-vendido'
+    }[venta.estado] || '');
+    badge.textContent = venta.estado;
+    markDirty();
+    if (activeTab === 'resumen') renderResumen();
+  });
+
+  const badge = document.createElement('span');
+  badge.className = 'estado-badge ' + estadoClass;
+  badge.textContent = venta.estado;
+
+  fields.appendChild(clienteInp);
+  fields.appendChild(fechaInp);
+  fields.appendChild(estadoSel);
+
+  const headerRight = document.createElement('div');
+  headerRight.style.cssText = 'display:flex;align-items:center;gap:.5rem';
+  headerRight.appendChild(badge);
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'btn btn-icon btn-danger btn-sm';
+  delBtn.innerHTML = '🗑';
+  delBtn.title = 'Eliminar venta';
+  delBtn.addEventListener('click', () => {
+    if (!confirm(`¿Eliminar venta ${venta.id}?`)) return;
+    state.ventas = state.ventas.filter(v => v.id !== venta.id);
+    renderVentas();
+    markDirty();
+    if (activeTab === 'resumen') renderResumen();
+  });
+  headerRight.appendChild(delBtn);
+
+  header.appendChild(idSpan);
+  header.appendChild(fields);
+  header.appendChild(headerRight);
+
+  // ── Body ──
+  const body = document.createElement('div');
+  body.className = 'venta-body';
+
+  // Items
+  const itemsDiv = document.createElement('div');
+  itemsDiv.className = 'venta-items';
+  const itemsTitle = document.createElement('div');
+  itemsTitle.className = 'venta-items-title';
+  itemsTitle.textContent = 'Productos';
+  itemsDiv.appendChild(itemsTitle);
+
+  const itemsContainer = document.createElement('div');
+  itemsDiv.appendChild(itemsContainer);
+
+  function renderItems() {
+    itemsContainer.innerHTML = '';
+    for (const item of venta.items) {
+      const p = state.productos.find(x => x.id === item.productoId);
+      const row = document.createElement('div');
+      row.className = 'venta-item-row';
+
+      const nameTd = document.createElement('div');
+      nameTd.style.cssText = 'font-size:0.83rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      nameTd.textContent = p ? `${p.nombre} — ${p.variante}` : item.productoId;
+
+      const qtyInp = document.createElement('input');
+      qtyInp.type  = 'number';
+      qtyInp.value = item.cantidad;
+      qtyInp.min   = '1';
+      qtyInp.step  = '1';
+      qtyInp.style.cssText = 'width:56px;padding:.28rem .4rem;font-size:.8rem';
+      qtyInp.addEventListener('change', e => {
+        item.cantidad = parseInt(e.target.value) || 1;
+        updateVentaFinancials(venta, finContainer);
+        markDirty();
+        if (activeTab === 'resumen') renderResumen();
+      });
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'btn btn-icon btn-danger btn-sm';
+      removeBtn.innerHTML = '×';
+      removeBtn.addEventListener('click', () => {
+        venta.items = venta.items.filter(i => i !== item);
+        renderItems();
+        updateVentaFinancials(venta, finContainer);
+        markDirty();
+        if (activeTab === 'resumen') renderResumen();
+      });
+
+      row.appendChild(nameTd);
+      row.appendChild(qtyInp);
+      row.appendChild(removeBtn);
+      itemsContainer.appendChild(row);
+    }
+
+    // Add item row
+    const addRow = document.createElement('div');
+    addRow.className = 'add-item-row';
+
+    const prodSel = document.createElement('select');
+    const defaultOpt = document.createElement('option');
+    defaultOpt.value = ''; defaultOpt.textContent = '— Agregar producto —';
+    prodSel.appendChild(defaultOpt);
+    const orderedProds = [...state.productos].sort((a,b) => a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
+    for (const p of orderedProds) {
+      const o = document.createElement('option');
+      o.value = p.id;
+      o.textContent = `${p.nombre} (${p.variante}) — ${fmt(precioVenta(p))}`;
+      prodSel.appendChild(o);
+    }
+
+    const qtyAdd = document.createElement('input');
+    qtyAdd.type = 'number'; qtyAdd.value = '1'; qtyAdd.min = '1'; qtyAdd.step = '1';
+    qtyAdd.style.cssText = 'width:60px;padding:.3rem .45rem;font-size:.8rem';
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-sm';
+    addBtn.textContent = '+ Agregar';
+    addBtn.addEventListener('click', () => {
+      if (!prodSel.value) return;
+      venta.items.push({ productoId: prodSel.value, cantidad: parseInt(qtyAdd.value) || 1 });
+      renderItems();
+      updateVentaFinancials(venta, finContainer);
+      markDirty();
+      if (activeTab === 'resumen') renderResumen();
+    });
+
+    addRow.appendChild(prodSel);
+    addRow.appendChild(qtyAdd);
+    addRow.appendChild(addBtn);
+    itemsContainer.appendChild(addRow);
+  }
+
+  renderItems();
+
+  // Financials
+  const finContainer = document.createElement('div');
+  finContainer.className = 'venta-financials';
+  buildVentaFinancials(venta, finContainer);
+
+  // Notas
+  const notasDiv = document.createElement('div');
+  notasDiv.className = 'venta-notas';
+  const notasLabel = document.createElement('label');
+  notasLabel.textContent = 'Notas';
+  const notasArea = document.createElement('textarea');
+  notasArea.value = venta.notas || '';
+  notasArea.rows  = 2;
+  notasArea.addEventListener('change', e => { venta.notas = e.target.value; markDirty(); });
+  notasDiv.appendChild(notasLabel);
+  notasDiv.appendChild(notasArea);
+
+  body.appendChild(itemsDiv);
+  body.appendChild(finContainer);
+  body.appendChild(notasDiv);
+
+  card.appendChild(header);
+  card.appendChild(body);
+
+  return card;
+}
+
+function buildVentaFinancials(venta, container) {
+  container.innerHTML = '';
+
+  const monto = ventaMonto(venta);
+  const saldo = ventaSaldo(venta);
+
+  // Monto adeudado (read-only)
+  const adField = document.createElement('div');
+  adField.className = 'fin-field';
+  adField.innerHTML = `<label>Monto adeudado</label><div style="font-size:1rem;font-weight:600;padding-top:.45rem">${fmt(monto)}</div>`;
+
+  // Monto pagado (editable)
+  const pagField = document.createElement('div');
+  pagField.className = 'fin-field';
+  const pagLabel = document.createElement('label');
+  pagLabel.textContent = 'Monto pagado';
+  const pagInp = document.createElement('input');
+  pagInp.type  = 'number';
+  pagInp.value = venta.montoPagado || 0;
+  pagInp.min   = '0'; pagInp.step = '0.01';
+  pagInp.addEventListener('change', e => {
+    venta.montoPagado = parseFloat(e.target.value) || 0;
+    updateVentaFinancials(venta, container);
+    markDirty();
+    if (activeTab === 'resumen') renderResumen();
+  });
+  pagField.appendChild(pagLabel);
+  pagField.appendChild(pagInp);
+
+  // Saldo
+  const salField = document.createElement('div');
+  salField.className = 'fin-field';
+  const salLabel = document.createElement('label');
+  salLabel.textContent = 'Saldo';
+  const salVal = document.createElement('div');
+  salVal.className = 'fin-saldo ' + (saldo <= 0 ? 'text-green' : 'text-red');
+  salVal.textContent = fmt(saldo);
+  salField.appendChild(salLabel);
+  salField.appendChild(salVal);
+
+  container.appendChild(adField);
+  container.appendChild(pagField);
+  container.appendChild(salField);
+}
+
+function updateVentaFinancials(venta, container) {
+  buildVentaFinancials(venta, container);
+}
+
+function createVenta() {
+  state.meta.lastSaleSeq = (state.meta.lastSaleSeq || 0) + 1;
+  const newVenta = {
+    id:           'V-' + pad(state.meta.lastSaleSeq),
+    cliente:      '',
+    fecha:        todayISO(),
+    estado:       'Preorder impago',
+    items:        [],
+    montoPagado:  0,
+    notas:        ''
+  };
+  state.ventas.push(newVenta);
+  markDirty();
+  ventasFilter = 'all';
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === 'all'));
+  renderVentas();
+  // Scroll to new card (it's first after reverse)
+  const list = $('ventas-list');
+  if (list.firstElementChild) list.firstElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TAB 4 — RESUMEN
+// ─────────────────────────────────────────────────────────────
+function renderResumen() {
+  const container = $('resumen-content');
+  container.innerHTML = '';
+
+  // ── Calculate all KPIs ──
+  const ingresosCobrados = state.ventas.reduce((s, v) => s + (v.montoPagado || 0), 0);
+  const totalCostosVar   = state.costosVariables.reduce((s, c) => s + (c.monto || 0), 0);
+  const gastoInventario  = state.productos.reduce((s, p) => s + p.comprados * (p.costo + p.envio), 0);
+  const resultadoNeto    = ingresosCobrados - totalCostosVar - gastoInventario;
+
+  const valorStock       = state.productos.reduce((s, p) => s + p.stock * p.costo, 0);
+  const ganPotencialStock= state.productos.reduce((s, p) => s + p.stock * gananciaUnidad(p), 0);
+  const ganRealizadaVentas=state.productos.reduce((s, p) => s + gananciaPorProducto(p), 0);
+  const saldoPendiente   = state.ventas.reduce((s, v) => { const sal = ventaSaldo(v); return s + (sal > 0 ? sal : 0); }, 0);
+
+  const countImpago  = state.ventas.filter(v => v.estado === 'Preorder impago').length;
+  const countPago    = state.ventas.filter(v => v.estado === 'Preorder pago').length;
+  const countVendido = state.ventas.filter(v => v.estado === 'Vendido').length;
+
+  // ── Headline ──
+  const headline = document.createElement('div');
+  headline.className = 'headline-card ' + (resultadoNeto >= 0 ? 'verde' : 'rojo');
+  headline.innerHTML = `
+    <div class="headline-label">Resultado neto (caja)</div>
+    <div class="headline-status ${resultadoNeto >= 0 ? 'verde' : 'rojo'}">${resultadoNeto >= 0 ? 'EN VERDE' : 'EN ROJO'}</div>
+    <div class="headline-amount ${resultadoNeto >= 0 ? 'verde' : 'rojo'}">${fmt(resultadoNeto)}</div>
+    <div style="margin-top:.85rem;font-size:.75rem;color:var(--silver-lo);letter-spacing:.04em">
+      Cobrado: ${fmt(ingresosCobrados)} &nbsp;−&nbsp; Costos variables: ${fmt(totalCostosVar)} &nbsp;−&nbsp; Gasto inventario: ${fmt(gastoInventario)}
+    </div>`;
+  container.appendChild(headline);
+
+  // ── KPI Grid ──
+  const kpiGrid = document.createElement('div');
+  kpiGrid.className = 'kpi-grid';
+
+  const kpis = [
+    { label: 'Ingresos cobrados',           value: fmt(ingresosCobrados),     cls: ingresosCobrados > 0 ? 'green' : '' },
+    { label: 'Total costos variables',       value: fmt(totalCostosVar),       cls: '' },
+    { label: 'Gasto en inventario',          value: fmt(gastoInventario),      cls: '' },
+    { label: 'Valor inventario en stock',    value: fmt(valorStock),           cls: '' },
+    { label: 'Ganancia potencial en stock',  value: fmt(ganPotencialStock),    cls: ganPotencialStock >= 0 ? 'green' : 'red' },
+    { label: 'Ganancia realizada (ventas)',  value: fmt(ganRealizadaVentas),   cls: ganRealizadaVentas >= 0 ? 'green' : 'red' },
+    { label: 'Saldo pendiente de cobro',     value: fmt(saldoPendiente),       cls: saldoPendiente > 0 ? 'red' : 'green' },
+    { label: 'Total ventas',                 value: state.ventas.length, cls: '' }
+  ];
+
+  for (const kpi of kpis) {
+    const card = document.createElement('div');
+    card.className = 'kpi-card';
+    card.innerHTML = `
+      <div class="kpi-label">${kpi.label}</div>
+      <div class="kpi-value ${kpi.cls}">${kpi.value}</div>`;
+    kpiGrid.appendChild(card);
+  }
+  container.appendChild(kpiGrid);
+
+  // ── Estado breakdown ──
+  const breakdownCard = document.createElement('div');
+  breakdownCard.className = 'card';
+  breakdownCard.innerHTML = `
+    <div class="kpi-label" style="margin-bottom:.75rem">Ventas por estado</div>
+    <div class="estado-breakdown">
+      <div class="estado-count"><div class="estado-dot" style="background:var(--red)"></div>Preorder impago: <strong>${countImpago}</strong></div>
+      <div class="estado-count"><div class="estado-dot" style="background:#facc15"></div>Preorder pago: <strong>${countPago}</strong></div>
+      <div class="estado-count"><div class="estado-dot" style="background:var(--green)"></div>Vendido: <strong>${countVendido}</strong></div>
+    </div>
+    <div style="margin-top:1rem;height:8px;border-radius:4px;overflow:hidden;background:var(--panel2);display:flex">
+      ${barSegment(countImpago,  state.ventas.length, 'var(--red)')}
+      ${barSegment(countPago,    state.ventas.length, '#facc15')}
+      ${barSegment(countVendido, state.ventas.length, 'var(--green)')}
+    </div>`;
+  container.appendChild(breakdownCard);
+
+  // ── Top products ──
+  const sortedProds = [...state.productos]
+    .map(p => ({ ...p, gt: gananciaPorProducto(p) }))
+    .filter(p => p.vendidos > 0)
+    .sort((a,b) => b.gt - a.gt)
+    .slice(0, 8);
+
+  if (sortedProds.length) {
+    const topCard = document.createElement('div');
+    topCard.className = 'card';
+    topCard.style.marginTop = '0.85rem';
+    topCard.innerHTML = `<div class="kpi-label" style="margin-bottom:.85rem">Top productos por ganancia realizada</div>`;
+    for (const p of sortedProds) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.83rem';
+      row.innerHTML = `
+        <span>${escHtml(p.nombre)} <span style="color:var(--silver-lo);font-size:.75rem">${escHtml(p.variante)}</span></span>
+        <span class="${p.gt >= 0 ? 'text-green' : 'text-red'} fw-600">${fmt(p.gt)}</span>`;
+      topCard.appendChild(row);
+    }
+    container.appendChild(topCard);
+  }
+}
+
+function barSegment(count, total, color) {
+  if (!total) return '';
+  const pct = (count / total * 100).toFixed(1);
+  return `<div style="width:${pct}%;background:${color};transition:width .3s"></div>`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// XSS helper
+// ─────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ─────────────────────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  setupLogin();
+});

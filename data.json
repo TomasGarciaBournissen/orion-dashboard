@@ -1,0 +1,30 @@
+{
+  "currency": "USD",
+  "costosVariables": [
+    { "id": "cv1", "categoria": "Ads", "monto": 0 },
+    { "id": "cv2", "categoria": "Delivery", "monto": 0 },
+    { "id": "cv3", "categoria": "Packaging", "monto": 0 }
+  ],
+  "productos": [
+    { "id": "EAR-STUD-4",    "nombre": "4-Claw Moissanite Stud Earrings",         "variante": "4 mm",       "categoria": "Earrings",  "costo": 6.50,  "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "EAR-STUD-5",    "nombre": "4-Claw Moissanite Stud Earrings",         "variante": "5 mm",       "categoria": "Earrings",  "costo": 8.50,  "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "EAR-STUD-65",   "nombre": "4-Claw Moissanite Stud Earrings",         "variante": "6.5 mm",     "categoria": "Earrings",  "costo": 13.10, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "EAR-HOOP-11",   "nombre": "Moissanite Hoop Earrings",                "variante": "11 mm",      "categoria": "Earrings",  "costo": 8.60,  "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "EAR-HOOP-13",   "nombre": "Moissanite Hoop Earrings",                "variante": "13 mm",      "categoria": "Earrings",  "costo": 10.60, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "RING-6CLAW-6",  "nombre": "1-Carat 6-Claw Moissanite Ring",          "variante": "Size 6",     "categoria": "Rings",     "costo": 13.00, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "RING-6CLAW-65", "nombre": "1-Carat 6-Claw Moissanite Ring",          "variante": "Size 6.5",   "categoria": "Rings",     "costo": 13.00, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "RING-RECT-6",   "nombre": "Rectangular Cut 1-Carat Moissanite Ring", "variante": "Size 6",     "categoria": "Rings",     "costo": 15.20, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "RING-RECT-65",  "nombre": "Rectangular Cut 1-Carat Moissanite Ring", "variante": "Size 6.5",   "categoria": "Rings",     "costo": 15.20, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "RING-RECT-7",   "nombre": "Rectangular Cut 1-Carat Moissanite Ring", "variante": "Size 7",     "categoria": "Rings",     "costo": 15.20, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "RING-PAVE-6",   "nombre": "Solitaire Pavé Band",                "variante": "Size 6",     "categoria": "Rings",     "costo": 12.00, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "RING-PAVE-65",  "nombre": "Solitaire Pavé Band",                "variante": "Size 6.5",   "categoria": "Rings",     "costo": 12.00, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "RING-PAVE-7",   "nombre": "Solitaire Pavé Band",                "variante": "Size 7",     "categoria": "Rings",     "costo": 12.00, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "RING-ADJ",      "nombre": "Adjustable Size Moissanite Ring",         "variante": "Adjustable", "categoria": "Rings",     "costo": 9.80,  "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "NECK-CROSS-070","nombre": "0.70-Carat Cross Pendant Necklace",       "variante": "0.70 ct",    "categoria": "Necklaces", "costo": 14.00, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "NECK-SOL-050",  "nombre": "4-Claw Solitaire Moissanite Necklace",    "variante": "0.50 ct",    "categoria": "Necklaces", "costo": 9.70,  "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "NECK-SOL-100",  "nombre": "4-Claw Solitaire Moissanite Necklace",    "variante": "1.00 ct",    "categoria": "Necklaces", "costo": 12.10, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 },
+    { "id": "BRAC-TENNIS-3", "nombre": "Tennis Bracelet – 3 mm",             "variante": "6.5 in",     "categoria": "Bracelets", "costo": 93.40, "envio": 0, "markupPct": 0, "stock": 0, "comprados": 0, "vendidos": 0 }
+  ],
+  "ventas": [],
+  "meta": { "lastSaleSeq": 0 }
+}

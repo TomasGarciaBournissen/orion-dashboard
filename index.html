@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orion Lux Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ============================================================
+     LOGIN SCREEN
+     ============================================================ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-brand">
+      <h1>Orion Lux</h1>
+      <p>Panel privado</p>
+    </div>
+
+    <div id="login-token-field">
+      <label for="inp-token">Token de GitHub</label>
+      <input type="password" id="inp-token" placeholder="ghp_…" autocomplete="off" />
+    </div>
+
+    <label for="inp-pass">Contraseña</label>
+    <input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password" />
+
+    <div class="login-error" id="login-error"></div>
+
+    <button class="btn-primary" id="btn-login">Entrar</button>
+
+    <button class="login-reset hidden" id="btn-reset-vault">
+      Usar otro token / reset
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MAIN APP
+     ============================================================ -->
+<div id="app">
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-brand">Orion Lux</div>
+    <div class="topbar-right">
+      <span class="sync-status" id="sync-status">Cargando…</span>
+      <button class="btn-topbar btn-save" id="btn-save">Guardar y publicar</button>
+      <button class="btn-topbar" id="btn-settings">⚙️</button>
+      <button class="btn-topbar" id="btn-logout">Salir</button>
+    </div>
+  </header>
+
+  <!-- Tab Navigation -->
+  <nav class="tab-nav" role="tablist">
+    <button class="tab-btn active" data-tab="costos"     role="tab">Costos</button>
+    <button class="tab-btn"        data-tab="inventario" role="tab">Inventario</button>
+    <button class="tab-btn"        data-tab="ventas"     role="tab">Ventas</button>
+    <button class="tab-btn"        data-tab="resumen"    role="tab">Resumen</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ── COSTOS ──────────────────────────────────────────────── -->
+    <div id="tab-costos" class="tab-panel active">
+      <div class="section-header">
+        <h2 class="section-title">Costos Variables</h2>
+        <span class="text-muted" style="font-size:0.72rem">Moneda base: USD</span>
+      </div>
+      <div class="card">
+        <div class="costos-list" id="costos-list"></div>
+        <button class="add-row-btn" id="btn-add-costo">+ Agregar categoría</button>
+        <div class="costos-total">
+          <span class="label">Total costos variables</span>
+          <span class="amount" id="costos-total">$0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INVENTARIO ───────────────────────────────────────────── -->
+    <div id="tab-inventario" class="tab-panel">
+      <div class="section-header">
+        <h2 class="section-title">Inventario / Productos</h2>
+        <button class="btn btn-accent" id="btn-add-producto">+ Producto</button>
+      </div>
+      <div id="inventario-content"></div>
+    </div>
+
+    <!-- ── VENTAS ───────────────────────────────────────────────── -->
+    <div id="tab-ventas" class="tab-panel">
+      <div class="section-header">
+        <h2 class="section-title">Ventas</h2>
+        <button class="btn btn-accent" id="btn-new-venta">+ Nueva venta</button>
+      </div>
+
+      <div class="ventas-filters">
+        <button class="filter-chip active" data-filter="all">Todas</button>
+        <button class="filter-chip" data-filter="Preorder impago">Preorder impago</button>
+        <button class="filter-chip" data-filter="Preorder pago">Preorder pago</button>
+        <button class="filter-chip" data-filter="Vendido">Vendido</button>
+        <input type="text" class="ventas-search" id="ventas-search" placeholder="Buscar cliente…" />
+      </div>
+
+      <div class="ventas-list" id="ventas-list"></div>
+    </div>
+
+    <!-- ── RESUMEN ──────────────────────────────────────────────── -->
+    <div id="tab-resumen" class="tab-panel">
+      <div class="section-header">
+        <h2 class="section-title">Resumen General</h2>
+        <span class="text-muted" style="font-size:0.72rem">Moneda base: USD</span>
+      </div>
+      <div id="resumen-content"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ============================================================
+     SETTINGS MODAL
+     ============================================================ -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="modal">
+    <div class="modal-title">⚙️ Configuración del repositorio</div>
+
+    <label for="cfg-owner">Owner (usuario / org de GitHub)</label>
+    <input type="text" id="cfg-owner" placeholder="tu-usuario" />
+
+    <label for="cfg-repo">Nombre del repositorio</label>
+    <input type="text" id="cfg-repo" placeholder="orion-lux-panel" />
+
+    <label for="cfg-branch">Rama</label>
+    <input type="text" id="cfg-branch" placeholder="main" />
+
+    <label for="cfg-path">Ruta del archivo</label>
+    <input type="text" id="cfg-path" placeholder="data.json" />
+
+    <p style="margin-top:1rem;font-size:0.75rem;color:var(--silver-lo);line-height:1.5">
+      El token de GitHub <strong>no</strong> se configura aquí — se gestiona desde la pantalla de inicio de sesión y solo vive en memoria durante la sesión.
+    </p>
+
+    <div class="modal-footer">
+      <button class="btn" id="btn-settings-cancel">Cancelar</button>
+      <button class="btn btn-accent" id="btn-settings-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

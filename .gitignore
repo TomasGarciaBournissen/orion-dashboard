@@ -1,0 +1,16 @@
+# Local env / secrets — never commit
+.env
+.env.local
+*.env
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor directories
+.vscode/
+.idea/
+
+# Node (if anyone accidentally runs npm here)
+node_modules/
