@@ -541,7 +541,7 @@ function renderCostos() {
     const montoInput = document.createElement('input');
     montoInput.type        = 'number';
     montoInput.value       = toDisplay(costo.monto);
-    montoInput.placeholder = '0';
+    montoInput.placeholder = showARS ? 'ARS' : 'USD';
     montoInput.min         = '0';
     montoInput.step        = showARS ? '1' : '0.01';
     montoInput.addEventListener('input', e => {
@@ -580,6 +580,8 @@ function renderCostos() {
 function updateCostosTotal() {
   const total = state.costosVariables.reduce((s, c) => s + (c.monto || 0), 0);
   $('costos-total').textContent = fmt(total);
+  const note = $('costos-currency-note');
+  if (note) note.textContent = showARS ? '(valores en ARS, guardados en USD)' : '(USD)';
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -812,6 +814,8 @@ function addNewProducto() {
   const card = document.createElement('div');
   card.className = 'card';
   card.style.marginBottom = '1rem';
+  const currLabel = showARS ? 'ARS' : 'USD';
+  const moneyStep = showARS ? '1' : '0.01';
   card.innerHTML = `
     <div class="section-title" style="margin-bottom:1rem;font-size:0.8rem">Nuevo producto</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.65rem;margin-bottom:1rem">
@@ -821,8 +825,8 @@ function addNewProducto() {
         <select id="np-cat">
           <option>Earrings</option><option>Rings</option><option>Necklaces</option><option>Bracelets</option><option>Other</option>
         </select></div>
-      <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Costo ($)</label><input type="number" id="np-costo" value="0" min="0" step="0.01" /></div>
-      <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Envío ($)</label><input type="number" id="np-envio" value="0" min="0" step="0.01" /></div>
+      <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Costo (${currLabel})</label><input type="number" id="np-costo" value="0" min="0" step="${moneyStep}" /></div>
+      <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Envío (${currLabel})</label><input type="number" id="np-envio" value="0" min="0" step="${moneyStep}" /></div>
       <div><label style="font-size:0.7rem;color:var(--silver-lo);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem">Markup %</label><input type="number" id="np-markup" value="0" min="0" step="1" /></div>
     </div>
     <div style="font-size:0.72rem;color:var(--silver-lo);margin-bottom:.75rem">ID generado: <span style="font-family:monospace;color:var(--silver)">${escHtml(id)}</span></div>
@@ -839,8 +843,8 @@ function addNewProducto() {
     nuevo.nombre    = card.querySelector('#np-nombre').value.trim()  || 'Producto';
     nuevo.variante  = card.querySelector('#np-variante').value.trim();
     nuevo.categoria = card.querySelector('#np-cat').value;
-    nuevo.costo     = parseFloat(card.querySelector('#np-costo').value)  || 0;
-    nuevo.envio     = parseFloat(card.querySelector('#np-envio').value)  || 0;
+    nuevo.costo     = toUSD(card.querySelector('#np-costo').value);
+    nuevo.envio     = toUSD(card.querySelector('#np-envio').value);
     nuevo.markupPct = parseFloat(card.querySelector('#np-markup').value) || 0;
     state.productos.push(nuevo);
     card.remove();
