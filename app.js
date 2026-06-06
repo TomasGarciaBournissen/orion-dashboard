@@ -8,10 +8,11 @@
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────
-const VAULT_KEY    = 'orionlux_vault';
-const REPO_CFG_KEY = 'orionlux_repo';
-const PBKDF2_ITER  = 150000;
-const ARS_RATE     = 1450;
+const VAULT_KEY        = 'orionlux_vault';
+const REPO_CFG_KEY     = 'orionlux_repo';
+const PBKDF2_ITER      = 150000;
+const ARS_RATE_DEFAULT = 1450;
+let   ARS_RATE         = ARS_RATE_DEFAULT;
 
 // ─────────────────────────────────────────────────────────────
 // APP STATE
@@ -280,6 +281,24 @@ function setSyncStatus(type, text) {
   el.textContent = text;
 }
 
+async function fetchArsRate() {
+  try {
+    const res  = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await res.json();
+    if (data && data.rates && data.rates.ARS) {
+      ARS_RATE = Math.round(data.rates.ARS);
+      updateRateDisplay();
+    }
+  } catch {
+    // silently keep the default fallback rate
+  }
+}
+
+function updateRateDisplay() {
+  const el = $('ars-rate-display');
+  if (el) el.textContent = `1 USD = $${ARS_RATE.toLocaleString('es-AR')} ARS`;
+}
+
 function markDirty() {
   const current = JSON.stringify(state, null, 2);
   if (current !== savedJSON) {
@@ -405,6 +424,12 @@ async function enterDashboard() {
   setupTopBar();
   setupTabs();
   setupSettings();
+
+  updateRateDisplay();
+  fetchArsRate().then(() => {
+    updateRateDisplay();
+    if (showARS) renderAll();
+  });
 }
 
 async function loadLocalData() {
