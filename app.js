@@ -1249,7 +1249,9 @@ function renderResumen() {
   const ingresosCobrados     = state.ventas.reduce((s, v) => s + (v.montoPagado || 0), 0);
   const ingresosAdeudados    = state.ventas.reduce((s, v) => s + ventaMonto(v), 0);
   const saldoPendiente       = state.ventas.reduce((s, v) => { const sal = ventaSaldo(v); return s + (sal > 0 ? sal : 0); }, 0);
-  const facturacionHistorica = state.productos.reduce((s, p) => s + p.comprados * precioVenta(p), 0);
+  const facturacionPasada    = state.productos.reduce((s, p) => s + p.vendidos * precioVenta(p), 0);
+  const facturacionPotencial = state.productos.reduce((s, p) => s + p.stock * precioVenta(p), 0);
+  const facturacionAllTime   = facturacionPasada + facturacionPotencial;
 
   // COGS
   const costoMercaderia      = state.productos.reduce((s, p) => s + p.comprados * p.costo, 0);
@@ -1269,7 +1271,6 @@ function renderResumen() {
 
   // Inventory / pipeline
   const valorStockCosto      = state.productos.reduce((s, p) => s + p.stock * p.costo, 0);
-  const facturacionPotencial = state.productos.reduce((s, p) => s + p.stock * precioVenta(p), 0);
   const margenBrutoPotencial = state.productos.reduce((s, p) => s + p.stock * gananciaUnidad(p), 0);
   const ganRealizadaVentas   = state.productos.reduce((s, p) => s + gananciaPorProducto(p), 0);
   const unidadesEnStock      = state.productos.reduce((s, p) => s + p.stock, 0);
@@ -1316,9 +1317,11 @@ function renderResumen() {
     <div class="pnl-title">Estado de Resultados (P&L)</div>
 
     ${section('Ingresos')}
-    ${row('Facturación histórica', fmt(facturacionHistorica), 'text-silver', true)}
-    ${row('(-) Ingresos no cobrados', fmt(saldoPendiente), 'text-red', true)}
-    ${row('Ingresos cobrados', fmt(ingresosCobrados), ingresosCobrados >= 0 ? 'text-green' : 'text-red', false, true, true)}
+    ${row('Facturación pasada (vendido)', fmt(facturacionPasada), 'text-silver', true)}
+    ${row('Facturación potencial (stock)', fmt(facturacionPotencial), 'text-silver', true)}
+    ${row('Facturación all-time', fmt(facturacionAllTime), 'text-silver', false, true, true)}
+    ${row('Cobrado de clientes', fmt(ingresosCobrados), ingresosCobrados >= 0 ? 'text-green' : 'text-red', true)}
+    ${row('Pendiente de cobro', fmt(saldoPendiente), saldoPendiente > 0 ? 'text-red' : 'text-green', true)}
 
     ${section('Costo de mercadería vendida (COGS)')}
     ${row('Costo de productos', fmt(costoMercaderia), '', true)}
@@ -1343,16 +1346,19 @@ function renderResumen() {
   pipeCard.innerHTML = `
     <div class="pnl-title">Inventario & Pipeline</div>
 
+    ${section('Facturación')}
+    ${row('Facturación pasada (vendido)', fmt(facturacionPasada), '', true)}
+    ${row('Facturación potencial (stock)', fmt(facturacionPotencial), '', true)}
+    ${row('Facturación all-time', fmt(facturacionAllTime), 'text-green', false, true, true)}
+
     ${section('Stock actual')}
     ${row('Unidades en stock', unidadesEnStock, '', true)}
     ${row('Valor en stock (costo)', fmt(valorStockCosto), '', true)}
-    ${row('Facturación potencial', fmt(facturacionPotencial), 'text-green', true)}
     ${row('Margen bruto potencial', fmt(margenBrutoPotencial), margenBrutoPotencial >= 0 ? 'text-green' : 'text-red', true, true)}
 
     ${section('Histórico')}
     ${row('Unidades compradas', unidadesCompradas, '', true)}
     ${row('Unidades vendidas', unidadesVendidas, '', true)}
-    ${row('Facturación histórica (PVP)', fmt(facturacionHistorica), 'text-silver', true)}
     ${row('Margen realizado', fmt(ganRealizadaVentas), ganRealizadaVentas >= 0 ? 'text-green' : 'text-red', true, true)}
 
     ${section('Cobranzas')}
