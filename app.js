@@ -1251,7 +1251,8 @@ function renderResumen() {
   const resultadoNeto    = ingresosCobrados - totalCostosVar - gastoInventario;
 
   const valorStock       = state.productos.reduce((s, p) => s + p.stock * p.costo, 0);
-  const ganPotencialStock= state.productos.reduce((s, p) => s + p.stock * gananciaUnidad(p), 0);
+  const ganPotencialStock    = state.productos.reduce((s, p) => s + p.stock * gananciaUnidad(p), 0);
+  const facturacionPotencial = state.productos.reduce((s, p) => s + p.stock * precioVenta(p), 0);
   const ganRealizadaVentas=state.productos.reduce((s, p) => s + gananciaPorProducto(p), 0);
   const saldoPendiente   = state.ventas.reduce((s, v) => { const sal = ventaSaldo(v); return s + (sal > 0 ? sal : 0); }, 0);
 
@@ -1280,7 +1281,8 @@ function renderResumen() {
     { label: 'Total costos variables',       value: fmt(totalCostosVar),       cls: '' },
     { label: 'Costo de productos',            value: fmt(gastoInventario),      cls: '' },
     { label: 'Valor de productos en stock',  value: fmt(valorStock),           cls: '' },
-    { label: 'Margen bruto potencial',       value: fmt(ganPotencialStock),    cls: ganPotencialStock >= 0 ? 'green' : 'red' },
+    { label: 'Facturación potencial',         value: fmt(facturacionPotencial), cls: facturacionPotencial > 0 ? 'green' : '' },
+    { label: 'Margen bruto potencial',        value: fmt(ganPotencialStock),    cls: ganPotencialStock >= 0 ? 'green' : 'red' },
     { label: 'Ganancia realizada (ventas)',  value: fmt(ganRealizadaVentas),   cls: ganRealizadaVentas >= 0 ? 'green' : 'red' },
     { label: 'Saldo pendiente de cobro',     value: fmt(saldoPendiente),       cls: saldoPendiente > 0 ? 'red' : 'green' },
     { label: 'Total ventas',                 value: state.ventas.length, cls: '' }
