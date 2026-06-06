@@ -903,6 +903,55 @@ textarea { resize: vertical; min-height: 60px; }
 }
 
 /* ============================================================
+   P&L STATEMENT
+   ============================================================ */
+.pnl-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--silver-hi);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.pnl-section-title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--silver-lo);
+  margin: 1rem 0 0.35rem;
+}
+
+.pnl-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.22rem 0;
+  font-size: 0.83rem;
+  border-bottom: 1px solid transparent;
+}
+
+.pnl-row.pnl-sep {
+  border-top: 1px solid var(--border);
+  margin-top: 0.2rem;
+  padding-top: 0.35rem;
+}
+
+.pnl-row.pnl-bold .pnl-label,
+.pnl-row.pnl-bold .pnl-value { font-weight: 700; color: var(--silver-hi); }
+
+.pnl-label { color: var(--silver); }
+.pnl-label.pnl-indent { padding-left: 0.85rem; color: var(--silver-lo); font-size: 0.8rem; }
+.pnl-value { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 700px) {
+  .pnl-two-col { grid-template-columns: 1fr !important; }
+}
+
+/* ============================================================
    HELPERS
    ============================================================ */
 .text-green  { color: var(--green) !important; }

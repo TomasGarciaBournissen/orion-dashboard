@@ -1244,22 +1244,54 @@ function renderResumen() {
   const container = $('resumen-content');
   container.innerHTML = '';
 
-  // ── Calculate all KPIs ──
-  const ingresosCobrados = state.ventas.reduce((s, v) => s + (v.montoPagado || 0), 0);
-  const totalCostosVar   = state.costosVariables.reduce((s, c) => s + (c.monto || 0), 0);
-  const gastoInventario  = state.productos.reduce((s, p) => s + p.comprados * (p.costo + p.envio), 0);
-  const resultadoNeto    = ingresosCobrados - totalCostosVar - gastoInventario;
+  // ── Calculations ──
+  // Revenue
+  const ingresosCobrados     = state.ventas.reduce((s, v) => s + (v.montoPagado || 0), 0);
+  const ingresosAdeudados    = state.ventas.reduce((s, v) => s + ventaMonto(v), 0);
+  const saldoPendiente       = state.ventas.reduce((s, v) => { const sal = ventaSaldo(v); return s + (sal > 0 ? sal : 0); }, 0);
+  const facturacionHistorica = state.productos.reduce((s, p) => s + p.comprados * precioVenta(p), 0);
 
-  const valorStock       = state.productos.reduce((s, p) => s + p.stock * p.costo, 0);
-  const ganPotencialStock    = state.productos.reduce((s, p) => s + p.stock * gananciaUnidad(p), 0);
-  const facturacionPotencial  = state.productos.reduce((s, p) => s + p.stock * precioVenta(p), 0);
-  const facturacionHistorica  = state.productos.reduce((s, p) => s + p.comprados * precioVenta(p), 0);
-  const ganRealizadaVentas=state.productos.reduce((s, p) => s + gananciaPorProducto(p), 0);
-  const saldoPendiente   = state.ventas.reduce((s, v) => { const sal = ventaSaldo(v); return s + (sal > 0 ? sal : 0); }, 0);
+  // COGS
+  const costoMercaderia      = state.productos.reduce((s, p) => s + p.comprados * p.costo, 0);
+  const costoEnvioProveedor  = state.productos.reduce((s, p) => s + p.comprados * p.envio, 0);
+  const totalCOGS            = costoMercaderia + costoEnvioProveedor;
 
+  // Gross profit (on collected revenue)
+  const margenBrutoCobrado   = ingresosCobrados - totalCOGS;
+  const pctMargenBruto       = ingresosCobrados > 0 ? (margenBrutoCobrado / ingresosCobrados * 100) : 0;
+
+  // Operating expenses
+  const totalOpex            = state.costosVariables.reduce((s, c) => s + (c.monto || 0), 0);
+
+  // Net result (cash)
+  const resultadoNeto        = ingresosCobrados - totalCOGS - totalOpex;
+  const ebitda               = resultadoNeto; // sin depreciación ni impuestos en este modelo
+
+  // Inventory / pipeline
+  const valorStockCosto      = state.productos.reduce((s, p) => s + p.stock * p.costo, 0);
+  const facturacionPotencial = state.productos.reduce((s, p) => s + p.stock * precioVenta(p), 0);
+  const margenBrutoPotencial = state.productos.reduce((s, p) => s + p.stock * gananciaUnidad(p), 0);
+  const ganRealizadaVentas   = state.productos.reduce((s, p) => s + gananciaPorProducto(p), 0);
+  const unidadesEnStock      = state.productos.reduce((s, p) => s + p.stock, 0);
+  const unidadesCompradas    = state.productos.reduce((s, p) => s + p.comprados, 0);
+  const unidadesVendidas     = state.productos.reduce((s, p) => s + p.vendidos, 0);
+
+  // Sales pipeline
   const countImpago  = state.ventas.filter(v => v.estado === 'Preorder impago').length;
   const countPago    = state.ventas.filter(v => v.estado === 'Preorder pago').length;
   const countVendido = state.ventas.filter(v => v.estado === 'Vendido').length;
+  const totalVentas  = state.ventas.length;
+
+  // ── Helpers ──
+  const row = (label, value, cls = '', indent = false, bold = false, sep = false) => `
+    <div class="pnl-row${sep ? ' pnl-sep' : ''}${bold ? ' pnl-bold' : ''}">
+      <span class="pnl-label${indent ? ' pnl-indent' : ''}">${label}</span>
+      <span class="pnl-value ${cls}">${value}</span>
+    </div>`;
+
+  const section = (title) => `<div class="pnl-section-title">${title}</div>`;
+
+  const pct = (n) => (Math.round(n * 10) / 10).toFixed(1) + '%';
 
   // ── Headline ──
   const headline = document.createElement('div');
@@ -1269,73 +1301,92 @@ function renderResumen() {
     <div class="headline-status ${resultadoNeto >= 0 ? 'verde' : 'rojo'}">${resultadoNeto >= 0 ? 'EN VERDE' : 'EN ROJO'}</div>
     <div class="headline-amount ${resultadoNeto >= 0 ? 'verde' : 'rojo'}">${fmt(resultadoNeto)}</div>
     <div style="margin-top:.85rem;font-size:.75rem;color:var(--silver-lo);letter-spacing:.04em">
-      Cobrado: ${fmt(ingresosCobrados)} &nbsp;−&nbsp; Costos variables: ${fmt(totalCostosVar)} &nbsp;−&nbsp; Costo de productos: ${fmt(gastoInventario)}
+      Cobrado ${fmt(ingresosCobrados)} &nbsp;−&nbsp; COGS ${fmt(totalCOGS)} &nbsp;−&nbsp; Opex ${fmt(totalOpex)}
     </div>`;
   container.appendChild(headline);
 
-  // ── KPI Grid ──
-  const kpiGrid = document.createElement('div');
-  kpiGrid.className = 'kpi-grid';
+  // ── Two-column layout: P&L + Pipeline ──
+  const cols = document.createElement('div');
+  cols.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:.85rem;margin-bottom:.85rem';
 
-  const kpis = [
-    { label: 'Ingresos cobrados',           value: fmt(ingresosCobrados),     cls: ingresosCobrados > 0 ? 'green' : '' },
-    { label: 'Total costos variables',       value: fmt(totalCostosVar),       cls: '' },
-    { label: 'Costo de productos',            value: fmt(gastoInventario),      cls: '' },
-    { label: 'Valor de productos en stock',  value: fmt(valorStock),           cls: '' },
-    { label: 'Facturación potencial',          value: fmt(facturacionPotencial),  cls: facturacionPotencial > 0 ? 'green' : '' },
-    { label: 'Facturación histórica',          value: fmt(facturacionHistorica),  cls: facturacionHistorica > 0 ? 'green' : '' },
-    { label: 'Margen bruto potencial',        value: fmt(ganPotencialStock),    cls: ganPotencialStock >= 0 ? 'green' : 'red' },
-    { label: 'Ganancia realizada (ventas)',  value: fmt(ganRealizadaVentas),   cls: ganRealizadaVentas >= 0 ? 'green' : 'red' },
-    { label: 'Saldo pendiente de cobro',     value: fmt(saldoPendiente),       cls: saldoPendiente > 0 ? 'red' : 'green' },
-    { label: 'Total ventas',                 value: state.ventas.length, cls: '' }
-  ];
+  // ── P&L Statement ──
+  const pnlCard = document.createElement('div');
+  pnlCard.className = 'card';
+  pnlCard.innerHTML = `
+    <div class="pnl-title">Estado de Resultados (P&L)</div>
 
-  for (const kpi of kpis) {
-    const card = document.createElement('div');
-    card.className = 'kpi-card';
-    card.innerHTML = `
-      <div class="kpi-label">${kpi.label}</div>
-      <div class="kpi-value ${kpi.cls}">${kpi.value}</div>`;
-    kpiGrid.appendChild(card);
-  }
-  container.appendChild(kpiGrid);
+    ${section('Ingresos')}
+    ${row('Facturación histórica', fmt(facturacionHistorica), 'text-silver', true)}
+    ${row('(-) Ingresos no cobrados', fmt(saldoPendiente), 'text-red', true)}
+    ${row('Ingresos cobrados', fmt(ingresosCobrados), ingresosCobrados >= 0 ? 'text-green' : 'text-red', false, true, true)}
 
-  // ── Estado breakdown ──
-  const breakdownCard = document.createElement('div');
-  breakdownCard.className = 'card';
-  breakdownCard.innerHTML = `
-    <div class="kpi-label" style="margin-bottom:.75rem">Ventas por estado</div>
-    <div class="estado-breakdown">
-      <div class="estado-count"><div class="estado-dot" style="background:var(--red)"></div>Preorder impago: <strong>${countImpago}</strong></div>
-      <div class="estado-count"><div class="estado-dot" style="background:#facc15"></div>Preorder pago: <strong>${countPago}</strong></div>
-      <div class="estado-count"><div class="estado-dot" style="background:var(--green)"></div>Vendido: <strong>${countVendido}</strong></div>
-    </div>
-    <div style="margin-top:1rem;height:8px;border-radius:4px;overflow:hidden;background:var(--panel2);display:flex">
-      ${barSegment(countImpago,  state.ventas.length, 'var(--red)')}
-      ${barSegment(countPago,    state.ventas.length, '#facc15')}
-      ${barSegment(countVendido, state.ventas.length, 'var(--green)')}
-    </div>`;
-  container.appendChild(breakdownCard);
+    ${section('Costo de mercadería vendida (COGS)')}
+    ${row('Costo de productos', fmt(costoMercaderia), '', true)}
+    ${row('Envío proveedor', fmt(costoEnvioProveedor), '', true)}
+    ${row('Total COGS', fmt(totalCOGS), 'text-red', false, true, true)}
+
+    ${section('Margen bruto')}
+    ${row('Margen bruto ($)', fmt(margenBrutoCobrado), margenBrutoCobrado >= 0 ? 'text-green' : 'text-red', false, true)}
+    ${row('Margen bruto (%)', pct(pctMargenBruto), margenBrutoCobrado >= 0 ? 'text-green' : 'text-red', true)}
+
+    ${section('Gastos operativos (Opex)')}
+    ${state.costosVariables.map(c => row(c.categoria || '—', fmt(c.monto), '', true)).join('')}
+    ${row('Total Opex', fmt(totalOpex), 'text-red', false, true, true)}
+
+    ${section('Resultado')}
+    ${row('EBITDA / Resultado neto', fmt(ebitda), ebitda >= 0 ? 'text-green fw-700' : 'text-red fw-700', false, true, true)}`;
+  cols.appendChild(pnlCard);
+
+  // ── Pipeline / Inventory ──
+  const pipeCard = document.createElement('div');
+  pipeCard.className = 'card';
+  pipeCard.innerHTML = `
+    <div class="pnl-title">Inventario & Pipeline</div>
+
+    ${section('Stock actual')}
+    ${row('Unidades en stock', unidadesEnStock, '', true)}
+    ${row('Valor en stock (costo)', fmt(valorStockCosto), '', true)}
+    ${row('Facturación potencial', fmt(facturacionPotencial), 'text-green', true)}
+    ${row('Margen bruto potencial', fmt(margenBrutoPotencial), margenBrutoPotencial >= 0 ? 'text-green' : 'text-red', true, true)}
+
+    ${section('Histórico')}
+    ${row('Unidades compradas', unidadesCompradas, '', true)}
+    ${row('Unidades vendidas', unidadesVendidas, '', true)}
+    ${row('Facturación histórica (PVP)', fmt(facturacionHistorica), 'text-silver', true)}
+    ${row('Margen realizado', fmt(ganRealizadaVentas), ganRealizadaVentas >= 0 ? 'text-green' : 'text-red', true, true)}
+
+    ${section('Cobranzas')}
+    ${row('Total facturado a clientes', fmt(ingresosAdeudados), '', true)}
+    ${row('Cobrado', fmt(ingresosCobrados), 'text-green', true)}
+    ${row('Pendiente de cobro', fmt(saldoPendiente), saldoPendiente > 0 ? 'text-red' : 'text-green', true, true)}
+
+    ${section('Ventas por estado')}
+    ${row('Preorder impago', countImpago, 'text-red', true)}
+    ${row('Preorder pago', countPago, '', true)}
+    ${row('Vendido / entregado', countVendido, 'text-green', true)}
+    ${row('Total órdenes', totalVentas, '', false, true, true)}`;
+  cols.appendChild(pipeCard);
+
+  container.appendChild(cols);
 
   // ── Top products ──
   const sortedProds = [...state.productos]
     .map(p => ({ ...p, gt: gananciaPorProducto(p) }))
     .filter(p => p.vendidos > 0)
-    .sort((a,b) => b.gt - a.gt)
+    .sort((a, b) => b.gt - a.gt)
     .slice(0, 8);
 
   if (sortedProds.length) {
     const topCard = document.createElement('div');
     topCard.className = 'card';
-    topCard.style.marginTop = '0.85rem';
-    topCard.innerHTML = `<div class="kpi-label" style="margin-bottom:.85rem">Top productos por ganancia realizada</div>`;
+    topCard.innerHTML = `<div class="pnl-title">Top productos por margen realizado</div>`;
     for (const p of sortedProds) {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.83rem';
-      row.innerHTML = `
+      const rowEl = document.createElement('div');
+      rowEl.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.83rem';
+      rowEl.innerHTML = `
         <span>${escHtml(p.nombre)} <span style="color:var(--silver-lo);font-size:.75rem">${escHtml(p.variante)}</span></span>
         <span class="${p.gt >= 0 ? 'text-green' : 'text-red'} fw-600">${fmt(p.gt)}</span>`;
-      topCard.appendChild(row);
+      topCard.appendChild(rowEl);
     }
     container.appendChild(topCard);
   }
