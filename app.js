@@ -1280,7 +1280,7 @@ function renderResumen() {
     { label: 'Total costos variables',       value: fmt(totalCostosVar),       cls: '' },
     { label: 'Costo de productos',            value: fmt(gastoInventario),      cls: '' },
     { label: 'Valor de productos en stock',  value: fmt(valorStock),           cls: '' },
-    { label: 'Ganancia potencial en stock',  value: fmt(ganPotencialStock),    cls: ganPotencialStock >= 0 ? 'green' : 'red' },
+    { label: 'Margen bruto potencial',       value: fmt(ganPotencialStock),    cls: ganPotencialStock >= 0 ? 'green' : 'red' },
     { label: 'Ganancia realizada (ventas)',  value: fmt(ganRealizadaVentas),   cls: ganRealizadaVentas >= 0 ? 'green' : 'red' },
     { label: 'Saldo pendiente de cobro',     value: fmt(saldoPendiente),       cls: saldoPendiente > 0 ? 'red' : 'green' },
     { label: 'Total ventas',                 value: state.ventas.length, cls: '' }
