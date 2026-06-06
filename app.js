@@ -1267,7 +1267,7 @@ function renderResumen() {
     <div class="headline-status ${resultadoNeto >= 0 ? 'verde' : 'rojo'}">${resultadoNeto >= 0 ? 'EN VERDE' : 'EN ROJO'}</div>
     <div class="headline-amount ${resultadoNeto >= 0 ? 'verde' : 'rojo'}">${fmt(resultadoNeto)}</div>
     <div style="margin-top:.85rem;font-size:.75rem;color:var(--silver-lo);letter-spacing:.04em">
-      Cobrado: ${fmt(ingresosCobrados)} &nbsp;−&nbsp; Costos variables: ${fmt(totalCostosVar)} &nbsp;−&nbsp; Gasto inventario: ${fmt(gastoInventario)}
+      Cobrado: ${fmt(ingresosCobrados)} &nbsp;−&nbsp; Costos variables: ${fmt(totalCostosVar)} &nbsp;−&nbsp; Costo de productos: ${fmt(gastoInventario)}
     </div>`;
   container.appendChild(headline);
 
@@ -1278,7 +1278,7 @@ function renderResumen() {
   const kpis = [
     { label: 'Ingresos cobrados',           value: fmt(ingresosCobrados),     cls: ingresosCobrados > 0 ? 'green' : '' },
     { label: 'Total costos variables',       value: fmt(totalCostosVar),       cls: '' },
-    { label: 'Gasto en inventario',          value: fmt(gastoInventario),      cls: '' },
+    { label: 'Costo de productos',            value: fmt(gastoInventario),      cls: '' },
     { label: 'Valor inventario en stock',    value: fmt(valorStock),           cls: '' },
     { label: 'Ganancia potencial en stock',  value: fmt(ganPotencialStock),    cls: ganPotencialStock >= 0 ? 'green' : 'red' },
     { label: 'Ganancia realizada (ventas)',  value: fmt(ganRealizadaVentas),   cls: ganRealizadaVentas >= 0 ? 'green' : 'red' },
